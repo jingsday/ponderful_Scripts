@@ -99,7 +99,7 @@ summary(ps_model_simple)
 ###gamma model 
 gamma_model <- glm(TP ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt + 
                      Forest_500_qt + Pastures.and.open.nature_500_qt + 
-                     Urban_500_qt + Animals_cont + Area + Depth + Hydeoperiod_length+bio4.t+bio5.t+
+                     Urban_500_qt + Animals_cont + Area.t + Depth.t + Hydeoperiod_length.t+bio4.t+bio5.t+
                      bio12.t+bio1.t,
                    data = full_df_standardized_TP, family = Gamma(link = "log"))
 
@@ -119,24 +119,50 @@ predictions <- predict(gamma_model,newdata=full_df_standardized_TP,type='respons
 plot(predictions)
 plot(full_df_standardized_TP$TP)
 
+hist(scale(full_df_standardized_TP$TP))
+###Mixed model
+library(lme4)
 
-##
-cv.gam(gam_model_simple,k=5)
+# Create a factor variable indicating the segment
+full_df_standardized_TP$segment <- ifelse(full_df_standardized_TP$TP <= 1, "low", "high")
+
+# Fit a mixed model with different intercepts for each segment
+mixed_model <- lmer(TP ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt + 
+                      Forest_500_qt + Pastures.and.open.nature_500_qt + 
+                      Urban_500_qt + Animals_cont.t + Area.t + Depth.t + Hydeoperiod_length.t+bio1.t+bio4.t+bio5.t+bio12.t + (1 | segment), data = full_df_standardized_TP)
+summary(mixed_model)
+
+null_model <- lmer(TP ~1 + (1|segment),data =full_df_standardized_TP)
+# Calculate log-likelihood for both models
+null_logLik <- logLik(null_model)
+fitted_logLik <- logLik(mixed_model)
+
+# Convert log-likelihood to deviance
+null_deviance <- -2 * as.numeric(null_logLik)
+fitted_deviance <- -2 * as.numeric(fitted_logLik)
+
+# Print the deviance values
+cat("Null Model Deviance:", null_deviance, "\n")
+cat("Fitted Model Deviance:", fitted_deviance, "\n")
+
+# Calculate the proportion of deviance explained
+deviance_explained <- (null_deviance - fitted_deviance) / null_deviance
+
+# Print the deviance explained
+cat("Proportion of Deviance Explained:", deviance_explained * 100, "%\n")
 
 
-summary(gam_model)
-### check unique value
-sapply(full_df_standardized_TP[, c('Natural_5_qt', 'Aquatic_500_qt', 'Cropland_500_qt', 
-                                   'Forest_500_qt', 'Pastures.and.open.nature_500_qt', 
-                                   'Urban_500_qt', 'Animals_cont', 'Area', 'Depth', 
-                                   'Hydeoperiod_length', 'bio4.t', 'bio5.t', 
-                                   'bio1.t',  'bio12.t')], 
-       function(x) length(unique(x)))
 
+# Calculate the deviance for both models
+null_deviance <- deviance(null_model)
+fitted_deviance <- deviance(mixed_model)
+
+# Print the deviance values
+cat("Null Model Deviance:", null_deviance, "\n")
+cat("Fitted Model Deviance:", fitted_deviance, "\n")
 
 
 ##gamma model selected
-
 
 tp_gamma_model <- glm(TP ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt + 
                         Forest_500_qt + Pastures.and.open.nature_500_qt + 
@@ -193,11 +219,6 @@ predictions <- predict(gamma_model,newdata=full_df_standardized_TP,type='respons
 plot(predictions)
 plot(full_df_standardized_TP$TP)
 
-
-#Generalized additive model 
-# Load the required package
-library(mgcv)
-library(car)
 
 
 # Fit the GAM
