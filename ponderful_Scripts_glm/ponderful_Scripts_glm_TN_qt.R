@@ -12,11 +12,21 @@ library(tidyverse)
 library(ggplot2)
 library(MASS)
 
+
+phy_che$bioregion <- 'Temprate'
+phy_che[phy_che$Country == 'Spain',]$bioregion <- 'Mediterranean'
+phy_che[phy_che$Country == 'Turkey',]$bioregion <- 'Continental'
+phy_che[phy_che$Country == 'Uruguay',]$bioregion <- 'Subtropical'
+
+phy_che$Country <- as.factor(phy_che$Country)
+levels(phy_che$Country)
+
+
 hist(phy_che$TN)
 full_df_standardized_TN <- phy_che %>%
   mutate(across(c(Natural_5_qt, Aquatic_500_qt, Cropland_500_qt, 
                   Forest_500_qt, Pastures.and.open.nature_500_qt, 
-                  Urban_500_qt, Animals_cont, Area, Depth, 
+                  Urban_500_qt, Animals_cont.t, Area.t, Depth.t, 
                   Hydeoperiod_length,bio1.t,bio4.t,bio5.t,
                   bio6.t,bio7.t,
                   bio12.t,bio15.t,bio17.t), 
@@ -48,11 +58,32 @@ gam_model_linear <- gam(TN ~ s(Natural_5_qt) + s(Aquatic_500_qt) +
 
 summary(gam_model_linear)
 
+
+gam_model_linear_re <- gam(TN ~ s(Natural_5_qt) + s(Aquatic_500_qt) + 
+                      s(Cropland_500_qt) + s(Forest_500_qt) + 
+                      s(Pastures.and.open.nature_500_qt) + s(Urban_500_qt) +
+                      s(Animals_cont.t, k = 7) + s(Area.t) + s(Depth.t) +
+                      s(Hydeoperiod_length.t) + s(bio1.t) + s(bio4.t) +
+                      s(bio5.t) + s(bio12.t) + 
+                      s(Country, bs = "re"),  # Adding Country as a random effect
+                    data = full_df_standardized_TN)
+summary(gam_model_linear_re)
+
+
 ###poisson model
 poisson_model <- gam(TN ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt + 
                       Forest_500_qt + Pastures.and.open.nature_500_qt + 
                       Urban_500_qt + Animals_cont.t + Area.t + Depth.t + Hydeoperiod_length.t+bio1.t+bio4.t+bio5.t+bio12.t, data = full_df_standardized_TN,family=poisson)
 summary(poisson_model)
+
+
+gam_model_poi <- gam(TN ~ s(Natural_5_qt) + s(Aquatic_500_qt) + 
+                          s(Cropland_500_qt) + s(Forest_500_qt) + 
+                          s(Pastures.and.open.nature_500_qt)+s(Urban_500_qt)+s(Animals_cont.t,k=7)+
+                          s(Area.t)+s(Depth.t)+s(Hydeoperiod_length.t)+s(bio1.t)+s(bio4.t)+s(bio5.t)+s(bio12.t), 
+                        data = full_df_standardized_TN,family = poisson)
+
+summary(gam_model_poi)
 ###glm lasso
 library("glmnet")
 
@@ -62,7 +93,6 @@ x <- as.matrix(full_df_standardized_TN[, c('Natural_5_qt', 'Aquatic_500_qt', 'Cr
                                            'Hydeoperiod_length.t','bio1.t','bio4.t','bio5.t','bio12.t')])
 y <- full_df_standardized_TN$TN
 
-hist( y)
 which(is.na(x))
 which(is.na(y))
 
@@ -86,6 +116,14 @@ meaning_vals
 
 
 ###gam model
+gamma_model <- glm(TN ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt + 
+                     Forest_500_qt + Pastures.and.open.nature_500_qt + 
+                     Urban_500_qt + Animals_cont.t + Area.t + Depth.t + Hydeoperiod_length.t+bio4.t+bio5.t+
+                     bio12.t+bio1.t,
+                   data = full_df_standardized_TN, family = Gamma(link = "log"))
+
+summary(gamma_model)
+
 gam_model_simple <- gam(TN ~ s(Natural_5_qt) + s(Aquatic_500_qt) + 
                           s(Cropland_500_qt) + s(Forest_500_qt) + 
                           s(Pastures.and.open.nature_500_qt)+s(Urban_500_qt)+s(Animals_cont.t,k=7)+
@@ -95,24 +133,42 @@ gam_model_simple <- gam(TN ~ s(Natural_5_qt) + s(Aquatic_500_qt) +
 
 summary(gam_model_simple)
 
-ps_model_simple <- gam(TN ~ s(Natural_5_qt) + s(Aquatic_500_qt) + 
-                          s(Cropland_500_qt) + s(Forest_500_qt) + 
-                          s(Pastures.and.open.nature_500_qt)+s(Urban_500_qt)+s(Animals_cont.t,k=7)+
-                          s(Area.t)+s(Depth.t)+s(Hydeoperiod_length.t)+s(bio1.t)+s(bio4.t)+s(bio5.t)+s(bio12.t), 
-                        data = full_df_standardized_TN, family = poisson)
+#gam model + random effect 
+
+gam_model_re <- gam(TN ~ s(Natural_5_qt) + s(Aquatic_500_qt) + 
+                      s(Cropland_500_qt) + s(Forest_500_qt) + 
+                      s(Pastures.and.open.nature_500_qt) + s(Urban_500_qt) +
+                      s(Animals_cont.t, k = 7) + s(Area.t) + s(Depth.t) +
+                      s(Hydeoperiod_length.t) + s(bio1.t) + s(bio4.t) +
+                      s(bio5.t) + s(bio12.t) + 
+                      s(Country, bs = "re"),  # Adding Country as a random effect
+                    data = full_df_standardized_TN, family = Gamma(link = "log"))
+summary(gam_model_re)
+
+plot(gam_model_re)
+#inverse Gaussian 
+gam_model_igau <- gam(TN ~ s(Natural_5_qt) + s(Aquatic_500_qt) + 
+                      s(Cropland_500_qt) + s(Forest_500_qt) + 
+                      s(Pastures.and.open.nature_500_qt) + s(Urban_500_qt) +
+                      s(Animals_cont.t, k = 7) + s(Area.t) + s(Depth.t) +
+                      s(Hydeoperiod_length.t) + s(bio1.t) + s(bio4.t) +
+                      s(bio5.t) + s(bio12.t),
+                    data = full_df_standardized_TN, family = inverse.gaussian(link = "log"))
+
+summary(gam_model_igau)
+
+gam_model_igau_re <- gam(TN ~ s(Natural_5_qt) + s(Aquatic_500_qt) + 
+                        s(Cropland_500_qt) + s(Forest_500_qt) + 
+                        s(Pastures.and.open.nature_500_qt) + s(Urban_500_qt) +
+                        s(Animals_cont.t, k = 7) + s(Area.t) + s(Depth.t) +
+                        s(Hydeoperiod_length.t) + s(bio1.t) + s(bio4.t) +
+                        s(bio5.t) + s(bio12.t) + 
+                        s(Country, bs = "re"),  # Adding Country as a random effect
+                      data = full_df_standardized_TN, family = inverse.gaussian(link = "log"))
 
 
-summary(ps_model_simple)
+summary(gam_model_igau_re)
 
-
-###gamma model 
-gamma_model <- glm(TN ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt + 
-                     Forest_500_qt + Pastures.and.open.nature_500_qt + 
-                     Urban_500_qt + Animals_cont.t + Area.t + Depth.t + Hydeoperiod_length.t+bio4.t+bio5.t+
-                     bio12.t+bio1.t,
-                   data = full_df_standardized_TN, family = Gamma(link = "log"))
-
-summary(gamma_model)
 # Extract the null deviance and residual deviance
 null_dev <- gamma_model$null.deviance
 res_dev <- gamma_model$deviance
@@ -129,8 +185,8 @@ predictions <- predict(gamma_model,newdata=full_df_standardized_TN,type='respons
 plot(predictions)
 hist(full_df_standardized_TN$TN)
 
-hist(scale(full_df_standardized_TN$TN))
-###Mixed model
+hist(full_df_standardized_TP$TP)
+plot()###Mixed model
 library(lme4)
 
 # Create a factor variable indicating the segment
@@ -196,6 +252,13 @@ gamma_model_selected <- glm(TN ~ Natural_5_qt + Animals_cont + Area + Depth + bi
 
 plot(gamma_model_selected)
 
+gamm_slope <- gam(TN ~ s(Natural_5_qt) + s(Aquatic_500_qt) + 
+                    s(Cropland_500_qt) + s(Forest_500_qt) + 
+                    s(Pastures.and.open.nature_500_qt)+s(Urban_500_qt)+s(Animals_cont.t,k=7)+
+                    s(Area.t,bs='re')+s(Depth.t)+s(Hydeoperiod_length.t)+s(bio1.t)+s(bio4.t)+s(bio5.t)+s(bio12.t), 
+                  data = full_df_standardized_TN, family = Gamma(link = "log"))
+
+summary(gamm_slope)
 
 
 #TN
@@ -221,6 +284,22 @@ tn_gamma_model <- glm(TN ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt +
                    data = full_df_standardized_TN, family = Gamma(link = "log"))
 
 summary(tn_gamma_model)
+
+for (i in unique(full_df_standardized_TN$Country)) {
+  hist(full_df_standardized_TN[full_df_standardized_TN$Country == i, ]$TN, 
+       main = paste("Histogram for", i), 
+       xlab = "TN", 
+       col = "lightblue")
+}
+
+library(fitdistrplus)
+
+TN <- na.omit(full_df_standardized_TN$TN)
+descdist(c(TN),discrete=FALSE)
+
+
+
+
 
 predictions <- predict(gamma_model, type = "response")
 plot(tn_gamma_model)
