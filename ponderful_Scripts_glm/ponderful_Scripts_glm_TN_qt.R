@@ -48,7 +48,15 @@ linear_model <- gam(TN ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt +
                       Forest_500_qt + Pastures.and.open.nature_500_qt + 
                       Urban_500_qt + Animals_cont.t + Area.t + Depth.t + Hydeoperiod_length.t+bio1.t+bio4.t+bio5.t+bio12.t, data = full_df_standardized_TN)
 summary(linear_model)
+gam_model_re <- gam(TN ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt + 
+                      Forest_500_qt + Pastures.and.open.nature_500_qt + 
+                      Urban_500_qt + Animals_cont.t + Area.t + Depth.t + 
+                      Hydeoperiod_length.t + bio1.t + bio4.t + bio5.t + bio12.t +
+                      s(Country, bs = "re"),  # Adding Country as a random effect
+                    data = full_df_standardized_TN)
 
+# Summary of the model
+summary(gam_model_re)
 gam_model_linear <- gam(TN ~ s(Natural_5_qt) + s(Aquatic_500_qt) + 
                           s(Cropland_500_qt) + s(Forest_500_qt) + 
                           s(Pastures.and.open.nature_500_qt)+s(Urban_500_qt)+s(Animals_cont.t,k=7)+

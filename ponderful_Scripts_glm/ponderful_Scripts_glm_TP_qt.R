@@ -17,12 +17,13 @@ full_df_standardized_TP <- phy_che %>%
   mutate(across(c(Natural_5_qt, Aquatic_500_qt, Cropland_500_qt, 
                   Forest_500_qt, Pastures.and.open.nature_500_qt, 
                   Urban_500_qt, Animals_cont.t, Area.t, Depth.t, 
-                  Hydeoperiod_length,bio1.t,bio4.t,bio5.t,
+                  Hydeoperiod_length.t,bio1.t,bio4.t,bio5.t,
                   bio6.t,bio7.t,
                   bio12.t,bio15.t,bio17.t), 
                 ~ scale(.)[, 1])) # Standardizing each column
+which(is.na(full_df_standardized_TP$TP))
 
-
+full_df_standardized_TP <- full_df_standardized_TP[-200,]
 #Downstream analysis 
 library(car)
 
@@ -44,7 +45,24 @@ linear_model <- gam(TP ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt +
                       Forest_500_qt + Pastures.and.open.nature_500_qt + 
                       Urban_500_qt + Animals_cont.t + Area.t + Depth.t + Hydeoperiod_length.t+bio1.t+bio4.t+bio5.t+bio12.t, data = full_df_standardized_TP)
 summary(linear_model)
+#par(mfrow = c(1, 2), cex = 1.1)
+# Diagnostic plots
+plot(linear_model$fitted.values, residuals(linear_model), 
+     xlab = "Fitted Values", ylab = "Residuals", 
+     main = "Residuals vs Fitted Values")
+abline(h = 0, col = "red")
 
+qqnorm(residuals(linear_model))
+qqline(residuals(linear_model), col = "red")
+
+
+# Predictions
+predictions <- predict(linear_model, newdata = full_df_standardized_TP)
+
+
+
+predictions <- predict(linear_model,newdata=full_df_standardized_TP,type='response')
+plot(predictions)
 
 gam_model_linear <- gam(TP ~ s(Natural_5_qt) + s(Aquatic_500_qt) + 
                           s(Cropland_500_qt) + s(Forest_500_qt) + 
@@ -52,6 +70,7 @@ gam_model_linear <- gam(TP ~ s(Natural_5_qt) + s(Aquatic_500_qt) +
                           s(Area.t)+s(Depth.t)+s(Hydeoperiod_length.t)+s(bio1.t)+s(bio4.t)+s(bio5.t)+s(bio12.t), 
                         data = full_df_standardized_TP)
 summary(gam_model_linear)
+
 
 
 gam_model_linear_re <- gam(TP ~ s(Natural_5_qt) + s(Aquatic_500_qt) + 
@@ -136,8 +155,31 @@ gam_model_gamma <- gam(TP ~ s(Natural_5_qt) + s(Aquatic_500_qt) +
                           s(Area.t)+s(Depth.t)+s(Hydeoperiod_length.t)+s(bio1.t)+s(bio4.t)+s(bio5.t)+s(bio12.t), 
                         data = full_df_standardized_TP, family = Gamma(link = "log"))
 
-
 summary(gam_model_gamma)
+# Diagnostic plots
+par(mfrow = c(1, 2), cex = 1.1)
+
+plot(gam_model_gamma$fitted.values, residuals(gam_model_gamma), 
+     xlab = "Fitted Values", ylab = "Residuals", 
+     main = "Residuals vs Fitted Values")
+abline(h = 0, col = "red")
+
+qqnorm(residuals(gam_model_gamma))
+qqline(residuals(gam_model_gamma), col = "red")
+
+plot(gam_model_gamma, pages = 1)
+
+# Predictions
+predictions <- predict(gam_model_gamma, newdata = full_df_standardized_TP,type='response')
+summary(predictions)
+
+plot(predictions)
+summary(predictions)
+plot(predictions, full_df_standardized_TP$TP,
+     xlab = "Predicted Values", ylab = "Observed TP",
+     main = "Predicted vs Observed TP")
+abline(0, 1, col = "red")  # Add a 45-degree line for reference
+
 
 gam_model_re <- gam(TP ~ s(Natural_5_qt) + s(Aquatic_500_qt) + 
                       s(Cropland_500_qt) + s(Forest_500_qt) + 
