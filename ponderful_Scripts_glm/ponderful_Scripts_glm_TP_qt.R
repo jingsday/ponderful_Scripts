@@ -45,7 +45,7 @@ linear_model <- gam(TP ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt +
                       Forest_500_qt + Pastures.and.open.nature_500_qt + 
                       Urban_500_qt + Animals_cont.t + Area.t + Depth.t + Hydeoperiod_length.t+bio1.t+bio4.t+bio5.t+bio12.t, data = full_df_standardized_TP)
 summary(linear_model)
-#par(mfrow = c(1, 2), cex = 1.1)
+par(mfrow = c(1, 2), cex = 1.1)
 # Diagnostic plots
 plot(linear_model$fitted.values, residuals(linear_model), 
      xlab = "Fitted Values", ylab = "Residuals", 
@@ -155,6 +155,7 @@ gam_model_gamma <- gam(TP ~ s(Natural_5_qt) + s(Aquatic_500_qt) +
                           s(Area.t)+s(Depth.t)+s(Hydeoperiod_length.t)+s(bio1.t)+s(bio4.t)+s(bio5.t)+s(bio12.t), 
                         data = full_df_standardized_TP, family = Gamma(link = "log"))
 
+AIC(gam_model_gamma)
 summary(gam_model_gamma)
 # Diagnostic plots
 par(mfrow = c(1, 2), cex = 1.1)
