@@ -125,9 +125,12 @@ TP_linear_model_selected <- glm(formula =  TP ~ Natural_5_qt + Forest_500_qt + P
 
 summary(TP_linear_model_selected)
 AIC(TP_linear_model_selected)
-
+MASS::
 ###Disgnostics (Deviance explained= 1-(residual/null))
  1 - (45.76 / 59.99)
+library(lme4)
+
+TP_linear_model_selected.rsquared()
 par(mfrow = c(2, 2))
 
 
@@ -144,14 +147,22 @@ TN_gam_model <- gam(TN ~ s(Natural_5_qt) + s(Aquatic_500_qt) +
                           s(bio5.t) + s(bio12.t),
                         data = model_TN_df, family = Gamma(link = "log"))
 summary(TN_gam_model)
+
+TN_gam_model <- gam(TN ~  s(Forest_500_qt,k=5) + 
+                      Animals_cont.t + s(Depth.t,k=4)
+                    + s(bio1.t,k=5) + s(bio12.t,k=4)+s(bio4.t,k=9) ,
+                    data = model_TN_df, family = Gamma(link = "log"))
+summary(TN_gam_model)
+gam.check(TN_gam_model)
+
 ###Selected gam model
-TN_gam_model_selected <- gam(TN ~ s(Forest_500_qt) + 
-                               s(Pastures.and.open.nature_500_qt) +
-                               s(Animals_cont.t, k = 7) + s(Depth.t)
-                             + s(bio1.t) + s(bio4.t) +
-                               s(bio5.t) + s(bio12.t),
+TN_gam_model_selected <- gam(TN ~ Forest_500_qt + 
+                               Depth.t+
+                             + s(bio1.t,k=6) + s(bio12.t,k=7)+s(bio4.t,k=8) ,
                              data = model_TN_df, family = Gamma(link = "log"))
 summary(TN_gam_model_selected)
+plot(TN_gam_model_selected,page=1,shade=TRUE,rug=TRUE)
+
 
 TN_gam_model_re <- gam(TN ~ s(Natural_5_qt) + s(Aquatic_500_qt) + 
                        s(Cropland_500_qt) + s(Forest_500_qt) + 
