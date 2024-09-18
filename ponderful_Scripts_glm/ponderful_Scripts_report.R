@@ -545,7 +545,7 @@ df <-model_TP_df[model_TP_df$bioregion == input,][,c('TP','Natural_5_qt',  'Crop
                                                      'Pastures.and.open.nature_500_qt', 'Aquatic_500_qt','Animals_cont.t', 'bio1.t','bio5.t')]
 hist(df$TP)
 TP_gam_temp <- gam(TP ~ Natural_5_qt + Aquatic_500_qt + 
-                     Cropland_500_qt +
+                                        Cropland_500_qt +
                      Pastures.and.open.nature_500_qt + Urban_500_qt +
                      s(Animals_cont.t,k=4) + Depth.t+s(bio1.t,k=5),  
                    data = df, family = Gamma(link = "log"))
