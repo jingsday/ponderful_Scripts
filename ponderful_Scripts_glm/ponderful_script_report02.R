@@ -62,6 +62,27 @@ model_TP_df <- full_df_standardized_TP[,c('TP','Natural_5_qt', 'Aquatic_500_qt',
                                           'bio12.t','bio15.t','bio17.t','Country','bioregion')]
 model_TP_df<-na.omit(model_TP_df)
 
+library(corrplot)
+##correlation plots
+
+##corr general
+
+df <-full_df_standardized_TN[,c('TN','Natural_5', 'Aquatic_500', 'Cropland_500', 
+                                                     'Forest_500', 'Pastures.and.open.nature_500', 
+                                                     'Urban_500', 'Animals_cont', 'Area', 'Depth', 
+                                                     'bio1.t','bio4.t','bio5.t','bio6.t','bio7.t',
+                                                     'bio12.t','bio15.t','bio17.t')]
+input<- 'Subtropical'#Temperate, Mediterranean, Continental, Subtropical
+df <-model_TN_df[model_TN_df$bioregion == input,][,c('TN','Natural_5_qt', 'Aquatic_500_qt', 'Cropland_500_qt', 
+                                                'Forest_500_qt', 'Pastures.and.open.nature_500_qt', 
+                                                'Urban_500_qt', 'Animals_cont.t', 'Area.t', 'Depth.t', 
+                                                'bio1.t','bio4.t','bio5.t','bio6.t','bio7.t',
+                                                'bio12.t','bio15.t','bio17.t')]
+df <-na.omit(df)
+corrplot(cor(df), type = "upper", order = "alphabet",tl.col = "black", tl.srt = 45,title = paste0(input))
+#cor(df)
+
+
 #Part II: Modelling
 ## TP
 ###GAM gamma model (setting general in the beginning and remove insignificant vars then set select as TRUE)
@@ -145,6 +166,26 @@ input <- 'Mediterranean'
 df <-model_TP_df[model_TP_df$bioregion == input,][,c('TP','Natural_5_qt',  'Cropland_500_qt', 'Urban_500_qt',  'Depth.t', 
                                                      'Pastures.and.open.nature_500_qt', 'Aquatic_500_qt','Animals_cont.t', 'bio1.t','bio4.t','bio5.t','bio12.t')]
 hist(df$TP)
+library(corrplot)
+plot.new()
+df <- model_TP_df %>% select(-Country, -bioregion)
+
+# Check if there are any remaining numeric columns
+if (ncol(df) > 1) {
+  # Plot the correlation matrix
+  corrplot(cor(df), type = "upper", order = "hclust", 
+           tl.col = "black", tl.srt = 45)
+} else {
+  print("The dataframe must contain at least two numeric columns for correlation.")
+}
+
+df <- model_TP_df[,-c('Country','bioregion')]
+corrplot(cor(df), type = "upper", order = "hclust",tl.col = "black", tl.srt = 45)
+cor(df)
+plot.new()
+df <-na.omit(df)
+corrplot(cor(df), type = "upper", order = "hclust",tl.col = "black", tl.srt = 45)
+cor(df)
 
 TP_gam_medi <- gam(TP ~ s(Natural_5_qt, k=8) + 
                      s(Aquatic_500_qt, k=5) + 
@@ -166,8 +207,8 @@ TP_gam_medi_remove <- gam(TP ~ Natural_5_qt + s(Cropland_500_qt,k=3) +
  
 summary(TP_gam_medi_remove)
 
-TP_gam_medi_selected <- gam(TP ~ Natural_5_qt + s(Cropland_500_qt,k=3) +
-                            Urban_500_qt + Animals_cont.t + bio1.t, data = df, family = Gamma(link = "log"))
+TP_gam_medi_selected <- gam(TP ~ s(Natural_5_qt) + s(Cropland_500_qt,k=3) +
+                            s(Urban_500_qt) + Animals_cont.t + bio1.t, data = df, family = Gamma(link = "log"))
 
 summary(TP_gam_medi_selected)
 
