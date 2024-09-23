@@ -4,6 +4,7 @@ library(ggplot2)
 library(nlme)
 library(effects)
 library(fitdistrplus)
+library(bestNormalize)
 
 
 outwdir <- '/Users/lidiayung/PhD_project/project_PONDERFUL/ponderful_Scripts/ponderful_OUTPUT/'
@@ -20,6 +21,14 @@ phy_che[phy_che$Country == 'Uruguay',]$bioregion <- 'Subtropical'
 phy_che$Country <- as.factor(phy_che$Country)
 levels(phy_che$Country)
 
+shapiro.test(phy_che$TP)
+test <- bestNormalize(phy_che$TP)
+plot(test, leg_loc = "bottomright")
+
+phy_che$log_TP <- predict(orderNorm(phy_che$TP))
+hist(phy_che$log_TP)
+shapiro.test(phy_che$log_TP)
+hist(phy_che$TP)
 
 hist(phy_che$TN)
 full_df_standardized_TN <- phy_che %>%
@@ -43,6 +52,7 @@ model_TN_df <- full_df_standardized_TN[,c('TN','Natural_5_qt', 'Aquatic_500_qt',
 
 model_TN_df <-na.omit(model_TN_df)
 
+min(model_TP_df$TP)
 plot(phy_che$TP)
 full_df_standardized_TP <- phy_che %>%
   mutate(across(c(Natural_5_qt, Aquatic_500_qt, Cropland_500_qt, 
@@ -53,9 +63,9 @@ full_df_standardized_TP <- phy_che %>%
                   bio12.t,bio15.t,bio17.t), 
                 ~ scale(.)[, 1])) # Standardizing each column
 
+colnames(full_df_standardized_TP)
 
-
-model_TP_df <- full_df_standardized_TP[,c('TP','Natural_5_qt', 'Aquatic_500_qt', 'Cropland_500_qt', 
+model_TP_df <- full_df_standardized_TP[,c('log_TP','TP','Natural_5_qt', 'Aquatic_500_qt', 'Cropland_500_qt', 
                                           'Forest_500_qt', 'Pastures.and.open.nature_500_qt', 
                                           'Urban_500_qt', 'Animals_cont.t', 'Area.t', 'Depth.t', 
                                           'bio1.t','bio4.t','bio5.t','bio6.t','bio7.t',
@@ -67,40 +77,52 @@ library(corrplot)
 
 ##corr general
 
-df <-full_df_standardized_TN[,c('TN','Natural_5', 'Aquatic_500', 'Cropland_500', 
+df <-full_df_standardized_TP[,c('TP','Natural_5', 'Aquatic_500', 'Cropland_500', 
                                                      'Forest_500', 'Pastures.and.open.nature_500', 
                                                      'Urban_500', 'Animals_cont', 'Area', 'Depth', 
                                                      'bio1.t','bio4.t','bio5.t','bio6.t','bio7.t',
                                                      'bio12.t','bio15.t','bio17.t')]
-input<- 'Subtropical'#Temperate, Mediterranean, Continental, Subtropical
-df <-model_TN_df[model_TN_df$bioregion == input,][,c('TN','Natural_5_qt', 'Aquatic_500_qt', 'Cropland_500_qt', 
+df <-full_df_standardized_TP[,c('TP','Natural_5_qt', 'Aquatic_500_qt', 'Cropland_500_qt', 
+                                'Forest_500_qt', 'Pastures.and.open.nature_500_qt', 
+                                'Urban_500_qt', 'Animals_cont.t', 'Area.t', 'Depth.t', 
+                                'bio1.t','bio7.t',
+                                'bio12.t')]
+input<- 'Temperate'#Temperate, Mediterranean, Continental, Subtropical
+df <-model_TP_df[model_TP_df$bioregion == input,][,c('TN','Natural_5_qt', 'Aquatic_500_qt', 'Cropland_500_qt', 
                                                 'Forest_500_qt', 'Pastures.and.open.nature_500_qt', 
                                                 'Urban_500_qt', 'Animals_cont.t', 'Area.t', 'Depth.t', 
                                                 'bio1.t','bio4.t','bio5.t','bio6.t','bio7.t',
                                                 'bio12.t','bio15.t','bio17.t')]
 df <-na.omit(df)
-corrplot(cor(df), type = "upper", order = "alphabet",tl.col = "black", tl.srt = 45,title = paste0(input))
-#cor(df)
+dev.off()
+corrplot(cor(df), type = "upper", order = "alphabet",tl.col = "black", tl.srt = 45)
+cor(df)
+
+
+#optimal constant selection for log transformation for TP 
+model_TP_df$log_TP <- log(model_TP_df$TP + 0.01)
+
 
 
 #Part II: Modelling
 ## TP
 ###GAM gamma model (setting general in the beginning and remove insignificant vars then set select as TRUE)
 
-TP_gam_model_gamma <- gam(TP ~ s(Natural_5_qt) + s(Aquatic_500_qt) + 
-                            s(Cropland_500_qt) + s(Forest_500_qt) + 
-                            s(Pastures.and.open.nature_500_qt)+s(Urban_500_qt)+s(Animals_cont.t,k=3)+
-                            s(Area.t)+s(Depth.t)+s(bio1.t)+s(bio4.t)+s(bio5.t)+s(bio12.t), 
-                          data = model_TP_df, family = Gamma(link = "log"))
+TP_gam_model_gamma <- gam(TP ~ Natural_5_qt + Aquatic_500_qt + 
+                            Cropland_500_qt + Forest_500_qt + 
+                            Pastures.and.open.nature_500_qt+Urban_500_qt+Animals_cont.t+
+                            s(Area.t)+s(Depth.t)+bio1.t+s(bio4.t)+s(bio12.t), 
+                          data = model_TP_df,family=gaussian(link='log'),select=TRUE)
+
+
 
 summary(TP_gam_model_gamma)
 
 TP_gam_model_gamma_remove <- gam(TP ~ s(Aquatic_500_qt) + 
                                    s(Forest_500_qt) + 
                                    s(Pastures.and.open.nature_500_qt)+s(Animals_cont.t,k=3)+
-                                   s(Area.t)+s(Depth.t)+s(bio1.t)+s(bio4.t)+s(bio12.t), 
+                                   s(Area.t)+s(Depth.t)+s(bio1.t,k=1)+s(bio4.t)+s(bio12.t), 
                                  data = model_TP_df, family = Gamma(link = "log"),select=TRUE)
-
 
 summary(TP_gam_model_gamma_remove)
 
@@ -114,9 +136,9 @@ summary(TP_gam_model_selected)
 
 
 summary(TP_gam_model_test)
-png(filename = paste0(outwdir, 'tp_gam_predictors.png'), width = 800, height = 600)
+png(filename = paste0(outwdir, 'test.png'), width = 1200, height = 1000)
 
-plot(TP_gam_model_selected, page = 1, shade = TRUE, rug = TRUE, residuals = TRUE)
+plot(TP_gam_model_gamma, page=1,shade = TRUE, rug = TRUE, residuals = TRUE,scale = FALSE,all.terms = TRUE)
 dev.off()
 
 plot(TP_gam_model_selected)
@@ -129,10 +151,10 @@ dev.off()
 
 ###GLM linear model 
 library(MASS)
-TP_linear_model <- glm(TP ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt +
+TP_linear_model <- glm(log_TP ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt +
                          Forest_500_qt + Pastures.and.open.nature_500_qt +
                          Urban_500_qt + Animals_cont.t + Area.t + Depth.t +
-                         bio1.t + bio4.t + bio5.t + bio12.t, 
+                         bio1.t + bio4.t + bio12.t, 
                        data = model_TP_df)
 
 summary(TP_linear_model)
@@ -855,3 +877,43 @@ plot(tn_subt_linear_model_selected)
 dev.off()
 
 summary(lm(formula = TN ~ Natural_5_qt + Aquatic_500_qt + Depth.t, data = df))
+
+#Part extra:transformed response vars modeled using GLM
+
+
+#TP general 
+
+TP_log_linear_model <- glm(log_TP ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt +
+                         Forest_500_qt + Pastures.and.open.nature_500_qt +
+                         Urban_500_qt + Animals_cont.t + Area.t + Depth.t +
+                         bio1.t + bio7.t + bio12.t, 
+                       data = model_TP_df)
+
+
+summary(TP_log_linear_model)
+stepAIC(TP_log_linear_model)
+
+TP_log_linear_model_selected <- glm(formula = log_TP ~ Aquatic_500_qt + Forest_500_qt + Animals_cont.t + 
+                                      Depth.t + bio1.t + bio7.t + bio12.t, data = model_TP_df)
+summary(TP_log_linear_model) #0.3654415 DEV
+
+png(filename=paste0(outwdir,"tp_log_glm_diagnostics.png"), width=800, height=800)
+par(mfrow=c(2,2))
+plot(TP_log_linear_model)
+dev.off()
+#TP medi 
+input <- 'Mediterranean'
+df <-model_TP_df[model_TP_df$bioregion == input,][,c('log_TP','TP','Natural_5_qt',  'Cropland_500_qt', 'Urban_500_qt',  'Depth.t', 
+                                                     'Pastures.and.open.nature_500_qt', 'Aquatic_500_qt','Animals_cont.t', 'bio1.t','bio4.t','bio5.t','bio12.t')]
+hist(df$log_TP)
+TP_log_medi_linear_model <- glm(log_TP ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt +
+                            Pastures.and.open.nature_500_qt +
+                             Urban_500_qt + Animals_cont.t + Area.t + Depth.t +
+                             bio1.t, 
+                           data = model_TP_df)
+summary(TP_log_medi_linear_model)
+stepAIC(TP_log_medi_linear_model)
+
+TP_log_medi_linear_model_selected <-  glm(formula = log_TP ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
+                                            Animals_cont.t + Depth.t + bio1.t, data = model_TP_df)
+summary(TP_log_medi_linear_model_selected)
