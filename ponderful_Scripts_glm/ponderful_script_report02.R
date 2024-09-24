@@ -32,6 +32,9 @@ hist(phy_che$log_TP)
 shapiro.test(phy_che$log_TP)
 hist(phy_che$TP)
 
+hist(phy_che$log_TN)
+hist(phy_che$log_TP)
+
 ##log transformation TN 
 shapiro.test(phy_che$TN)
 test <- bestNormalize(phy_che$TN) #log10
@@ -51,7 +54,7 @@ full_df_standardized_TN <- phy_che %>%
                   bio12.t,bio15.t,bio17.t), 
                 ~ scale(.)[, 1])) # Standardizing each column
 
-
+unique(model_TN_df$Animals_cont.t)
 
 
 model_TN_df <- full_df_standardized_TN[,c('log_TN','TN','Natural_5_qt', 'Aquatic_500_qt', 'Cropland_500_qt', 
@@ -72,12 +75,12 @@ full_df_standardized_TP <- phy_che %>%
                   bio12.t,bio15.t,bio17.t), 
                 ~ scale(.)[, 1])) # Standardizing each column
 
-
+colnames(phy_che)
 model_TP_df <- full_df_standardized_TP[,c('log_TP','TP','Natural_5_qt', 'Aquatic_500_qt', 'Cropland_500_qt', 
                                           'Forest_500_qt', 'Pastures.and.open.nature_500_qt', 
                                           'Urban_500_qt', 'Animals_cont.t', 'Area.t', 'Depth.t', 
                                           'bio1.t','bio4.t','bio5.t','bio6.t','bio7.t',
-                                          'bio12.t','bio15.t','bio17.t','Country','bioregion')]
+                                          'bio12.t','bio15.t','bio17.t','Country','bioregion','')]
 model_TP_df<-na.omit(model_TP_df)
 
 library(corrplot)
@@ -90,10 +93,16 @@ df <-full_df_standardized_TP[,c('TP','Natural_5_qt', 'Aquatic_500_qt', 'Cropland
                                 'Urban_500_qt', 'Animals_cont.t', 'Area.t', 'Depth.t', 
                                 'bio1.t','bio7.t',
                                 'bio12.t')]
+
+df <-full_df_standardized_TN[,c('TN','Natural_5_qt', 'Aquatic_500_qt', 'Cropland_500_qt', 
+                                'Forest_500_qt', 'Pastures.and.open.nature_500_qt', 
+                                'Urban_500_qt', 'Animals_cont.t', 'Area.t', 'Depth.t', 
+                                'bio1.t','bio7.t',
+                                'bio12.t')]
+
 df <-na.omit(df)
-dev.off()
 corrplot(cor(df), type = "upper", order = "alphabet",tl.col = "black", tl.srt = 45)
-cor(df)
+round(cor(df),2)
 
 input<- 'Temperate'#Temperate, Mediterranean, Continental, Subtropical
 df <-model_TP_df[model_TP_df$bioregion == input,][,c('TP','Natural_5_qt', 'Aquatic_500_qt', 'Cropland_500_qt', 
@@ -123,6 +132,14 @@ TP_gam_model_gamma <- gam(TP ~ Natural_5_qt + Aquatic_500_qt +
                           data = model_TP_df,family=gaussian(link='log'),select=TRUE)
 
 
+TP_gam_model_gamma_test <- gam(TP ~ Natural_5_qt + Aquatic_500_qt + 
+                            Cropland_500_qt + Forest_500_qt + 
+                            Pastures.and.open.nature_500_qt+Urban_500_qt+Animals_cont.t+
+                            Area.t+Depth.t+bio1.t+bio5.t+bio12.t + s(Country,k=1,bs='re'), 
+                          data = model_TP_df,family=gaussian(link='log'),method='REML')
+
+
+summary(TP_gam_model_gamma_test)
 
 summary(TP_gam_model_gamma)
 
@@ -188,7 +205,30 @@ dev.off()
 summary(lm(formula = TP ~ Natural_5_qt + Forest_500_qt + Pastures.and.open.nature_500_qt + 
              Animals_cont.t + Depth.t + bio5.t + bio12.t, data = model_TP_df))
 ### GLM random effect 
+glm(y ~ temperature, data = d, family = Gamma(link = "log"))
+TP_linear_model_test <- glm(TP ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt +
+                         Forest_500_qt + Pastures.and.open.nature_500_qt +
+                         Urban_500_qt + Animals_cont.t + Area.t + Depth.t +
+                         bio1.t + bio7.t + bio12.t,data=model_TP_df, family = Gamma(link = "log"))
 
+summary(TP_linear_model_test)
+stepAIC(TP_linear_model_test, direction = "both")
+TP_linear_model_test_selected <- glm(formula = TP ~ Natural_5_qt + Aquatic_500_qt + Animals_cont.t + 
+                                       Depth.t + bio1.t + bio7.t + bio12.t, family = Gamma(link = "log"), 
+                                     data = model_TP_df)
+
+
+summ(TP_linear_model_test_selected)
+summary(lm(formula = TP ~ Natural_5_qt + Aquatic_500_qt + Animals_cont.t + 
+              Depth.t + bio1.t + bio7.t + bio12.t, family = Gamma(link = "log"),data = model_TP_df))
+
+library(lme4)
+TP_log_mixed_model_test<- glmer(TP ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt +
+                            Forest_500_qt + Pastures.and.open.nature_500_qt +
+                            Urban_500_qt + Animals_cont.t + Area.t + Depth.t +
+                            bio1.t + bio7.t + bio12.t+(1 | Country),data=model_TP_df, family = Gamma(link = "log"))
+
+summ(TP_log_mixed_model_test)
 
 ###bio-clamatic region 
 ####Medi 
@@ -822,44 +862,6 @@ sqrt_resid <- sqrt(abs(residuals))  # For Scale-Location plot
 png(filename="diagnostic_plots.png", width=800, height=800)
 par(mfrow=c(2,2))
 
-# 1. Residuals vs Fitted
-plot(fitted_values, residuals,
-     main="Residuals vs Fitted",
-     xlab="Fitted Values",
-     ylab="Residuals",
-     pch=20, col="blue")
-abline(h = 0, col = "red")
-
-# 2. QQ Plot
-qqnorm(residuals,
-       main="Normal Q-Q",
-       ylab="Residuals",
-       xlab="Theoretical Quantiles")
-qqline(residuals, col = "red")
-
-# 3. Scale-Location Plot
-plot(fitted_values, sqrt_resid,
-     main="Scale-Location",
-     xlab="Fitted Values",
-     ylab="sqrt(|Residuals|)",
-     pch=20, col="blue")
-abline(h = 0, col = "red")
-
-# 4. Residuals vs Leverage
-plot(leverage, residuals,
-     main="Residuals vs Leverage",
-     xlab="Leverage",
-     ylab="Residuals",
-     pch=20, col="blue")
-abline(h = 0, col = "red")
-high_leverage <- which(leverage > (2 * mean(leverage)))
-points(leverage[high_leverage], residuals[high_leverage], 
-       col = "red", pch = 19)
-
-# Close the plotting device
-dev.off()
-
-
 ####glm 
 
 tn_subt_linear_model <- glm(TN~Natural_5_qt+ Aquatic_500_qt + 
@@ -918,6 +920,17 @@ dev.off()
 visreg(TP_log_linear_model_selected, partial = TRUE, rug = TRUE,page=1)
 dev_resid <- residuals(TP_log_linear_model_selected,type="deviance")
 shapiro.test(dev_resid)
+
+lm.test <- lm(log_TP ~ Aquatic_500_qt + Forest_500_qt + Animals_cont.t + 
+                Depth.t + bio1.t + bio7.t + bio12.t, data = model_TP_df)
+lm.test.resid <- rstandard(lm.test)
+
+plot(lm.test.resid ~ as.factor(model_TP_df$Country), xlab = "Countries",
+     ylab = "Standardized residuals")
+
+abline(0, 0, lty = 2)
+
+
 library(lmerTest)
 # Fit your mixed model
 TP_log_mixed_model<- lmer(log_TP ~ Aquatic_500_qt + Forest_500_qt + Animals_cont.t + 
@@ -928,11 +941,52 @@ step(TP_log_mixed_model)
 TP_log_mixed_model_selected <-lmer(log_TP ~ Aquatic_500_qt + Forest_500_qt + Depth.t + (1 | Country),data = model_TP_df)
 summary(TP_log_mixed_model_selected)  
 dev.off()
+plot(TP_log_mixed_model_selected,)
+
+
+png(filename=paste0(outwdir,"tp_log_mixed_predictors.png"), width=800, height=800)
+par(mfrow=c(2,2))
+visreg(TP_log_mixed_model_selected)
+dev.off()
+library(performance)
+
+# Diagnostic plots
+check_model(TP_log_mixed_model_selected)
+
+# Cook's distance plot
+
+png(filename=paste0(outwdir,"tp_log_mixed_diagnostics.png"), width=800, height=800)
+par(mfrow=c(2,2))
 plot(TP_log_mixed_model_selected)
+dev.off()
+library(jtools)
+summ(TP_log_mixed_model_selected)
+
+qqnorm(resid(TP_log_linear_model_selected), main = "Normal Q-Q Plot")
+qqline(resid(TP_log_linear_model_selected))
+
+effect_plot(TP_log_mixed_model_selected,pred = Aquatic_500_qt, interval = TRUE, plot.points = TRUE, 
+            jitter = 0.05)
+
+visreg(TP_log_mixed_model_selected)
+
+hist(resid(TP_log_mixed_model_selected))
+plot(fitted(TP_log_mixed_model_selected), resid(TP_log_mixed_model_selected), 
+     xlab = "Fitted values", ylab = "Residuals", 
+     main = "Residuals vs Fitted values")
+abline(h = 0, col = "red")
+
+qqnorm(resid(TP_log_linear_model_selected), main = "Normal Q-Q Plot")
+plot(fitted(TP_log_linear_model_selected), sqrt(abs(resid(TP_log_linear_model_selected))),
+     xlab = "Fitted values", ylab = "Square root of standardized residuals", 
+     main = "Scale-Location Plot")
+abline(h = 0, col = "red")
+
+library(sjPlot)
+tab_model(TP_log_mixed_model_selected)
 
 
-
-library(MuMIn)
+library(MuMIn)library(MuMIn)TRUE
 r.squaredGLMM(TP_log_mixed_model_selected)
 
 null_model <- lmer(log_TP ~ 1 + (1 | Country), data = model_TP_df, REML = FALSE)
@@ -1007,6 +1061,27 @@ png(filename=paste0(outwdir,"tp_log_temp_glm_predictos.png"), width=800, height=
 par(mfrow=c(2,4))
 visreg(TP_log_temp_linear_model_selected)
 dev.off()
+
+##TP temperate mixed 
+df <-model_TP_df[model_TP_df$bioregion == input,][,c('log_TP','TP','Natural_5_qt',  'Cropland_500_qt', 'Urban_500_qt',  'Depth.t', 
+                                                     'Pastures.and.open.nature_500_qt', 'Aquatic_500_qt','Animals_cont.t','Area.t', 'bio1.t','bio12.t','Country')]
+
+TP_log_temp_mixed_model<- lmer(log_TP  ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
+                            Animals_cont.t + Depth.t + bio12.t+ (1 | Country), data = df)
+summary(TP_log_temp_mixed_model)
+# Perform backward model selection
+step(TP_log_temp_mixed_model)
+TP_log_temp_mixed_model_selected <-glm(log_TP ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + Animals_cont.t + Depth.t + bio12.t,data = model_TP_df)
+summary(TP_log_temp_mixed_model_selected)  
+dev.off()
+plot(TP_log_mixed_model_selected,)
+
+
+png(filename=paste0(outwdir,"tp_log_mixed_predictors.png"), width=800, height=800)
+par(mfrow=c(2,2))
+visreg(TP_log_mixed_model_selected)
+dev.off()
+
 
 # TP log CTN  removing Pastures.and.open.nature_500_qt, area.t,Aquatic_500_qt',
 input <- 'Continental'
@@ -1092,6 +1167,27 @@ png(filename=paste0(outwdir,"TN_log_glm_predictors.png"), width=800, height=800)
 par(mfrow=c(2,4))
 visreg(TN_log_linear_model_selected)
 dev.off()
+################### TN mixed 
+TN_log_mixed_model<- lmer(log_TN ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt +
+                            Forest_500_qt + Pastures.and.open.nature_500_qt +
+                            Urban_500_qt + Animals_cont.t + Area.t + Depth.t +
+                            bio1.t + bio7.t + bio12.t+ (1 | Country), 
+                          data = model_TN_df)
+summary(TN_log_mixed_model)
+
+# Perform backward model selection
+step(TN_log_mixed_model)
+TN_log_mixed_model_selected <-lmer(log_TN ~ Forest_500_qt + Area.t + Depth.t + (1 | Country),data = model_TN_df)
+summary(TN_log_mixed_model_selected)  
+dev.off()
+plot(TN_log_mixed_model_selected)
+
+
+png(filename=paste0(outwdir,"TN_log_mixed_predictors.png"), width=800, height=800)
+par(mfrow=c(2,2))
+visreg(TN_log_mixed_model_selected)
+dev.off()
+
 
 #TN medi  removed forest, bio12, bio7  SHould remove area.t
 input <- 'Mediterranean'
@@ -1160,6 +1256,32 @@ par(mfrow=c(2,3))
 visreg(TN_log_temp_linear_model_selected)
 dev.off()
 
+#############TN temp mixed
+
+df <-model_TN_df[model_TN_df$bioregion == input,][,c('log_TN','TN','Natural_5_qt',  'Cropland_500_qt', 'Urban_500_qt',  'Depth.t', 
+                                                     'Pastures.and.open.nature_500_qt', 'Aquatic_500_qt','Animals_cont.t','Area.t', 'bio1.t','bio12.t','Country')]
+dim(df)
+
+TN_log_temp_mixed_model<- lmer(log_TN ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt +
+                            Pastures.and.open.nature_500_qt +
+                            Urban_500_qt + Animals_cont.t + Area.t + Depth.t +
+                            bio1.t +bio12.t+ (1 | Country) , 
+                          data = df)
+summary(TN_log_temp_mixed_model)
+
+# Perform backward model selection
+step(TN_log_temp_mixed_model)
+TN_log_temp_mixed_model_selected <-lmer(log_TN ~ Cropland_500_qt + Depth.t + bio12.t + (1 | Country),data = model_TN_df)
+summary(TN_log_temp_mixed_model_selected)  
+dev.off()
+plot(TN_log_mixed_model_selected)
+
+
+png(filename=paste0(outwdir,"TN_log_mixed_predictors.png"), width=800, height=800)
+par(mfrow=c(2,2))
+visreg(TN_log_mixed_model_selected)
+dev.off()
+
 # TN log CTN  removing Pastures.and.open.nature_500_qt, area.t,Aquatic_500_qt',
 input <- 'Continental'
 df <-model_TN_df[model_TN_df$bioregion == input,][,c('log_TN','TN','Natural_5_qt',  'Cropland_500_qt', 'Urban_500_qt',  'Depth.t', 
@@ -1213,3 +1335,19 @@ png(filename=paste0(outwdir,"TN_log_subp_glm_predictors.png"), width=800, height
 par(mfrow=c(2,2))
 visreg(TN_log_subp_linear_model_selected)
 dev.off()
+#################Part extra:glm spatio autocorrelation 
+
+# Fit a GAM with spatial effects
+gam_model_spatial <- gam(TP ~ s(Natural_5_qt) + s(Aquatic_500_qt) + 
+                           s(Cropland_500_qt) + s(Forest_500_qt) + 
+                           s(Pastures.and.open.nature_500_qt) + 
+                           s(Urban_500_qt) + 
+                           s(Depth.t) + 
+                           s(bio1.t) + 
+                           s(bio12.t) + 
+                           s(Longitude, Latitude, bs = "tp"),  # Spatial smoother
+                         data = model_TP_df, 
+                         family = Gamma(link = "log"))
+
+summary(gam_model_spatial)
+
