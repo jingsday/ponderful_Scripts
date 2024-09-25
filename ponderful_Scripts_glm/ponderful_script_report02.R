@@ -887,8 +887,7 @@ dev.off()
 
 summary(lm(formula = TN ~ Natural_5_qt + Aquatic_500_qt + Depth.t, data = df))
 
-#Part extra:transformed response vars modeled using GLM
-
+#Part extra III :transformed response vars modeled using GLM and GLMM 
 ####TP general 
 
 TP_log_linear_model <- glm(log_TP ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt +
@@ -929,10 +928,10 @@ plot(lm.test.resid ~ as.factor(model_TP_df$Country), xlab = "Countries",
      ylab = "Standardized residuals")
 
 abline(0, 0, lty = 2)
-
+anova(TP_log_linear_model_selected, TP_log_mixed_model_selected)
 
 library(lmerTest)
-# Fit your mixed model
+####### TP general random effect
 TP_log_mixed_model<- lmer(log_TP ~ Aquatic_500_qt + Forest_500_qt + Animals_cont.t + 
                                       Depth.t + bio1.t + bio7.t + bio12.t+ (1 | Country), data = model_TP_df)
 summary(TP_log_mixed_model)
@@ -940,63 +939,60 @@ summary(TP_log_mixed_model)
 step(TP_log_mixed_model)
 TP_log_mixed_model_selected <-lmer(log_TP ~ Aquatic_500_qt + Forest_500_qt + Depth.t + (1 | Country),data = model_TP_df)
 summary(TP_log_mixed_model_selected)  
-dev.off()
-plot(TP_log_mixed_model_selected,)
+library(MuMIn)
+r.squaredGLMM(TP_log_mixed_model_selected)
+
+plot(ranef(TP_log_mixed_model_selected))
 
 
-png(filename=paste0(outwdir,"tp_log_mixed_predictors.png"), width=800, height=800)
-par(mfrow=c(2,2))
-visreg(TP_log_mixed_model_selected)
+#####Model Diagnostics
+
+
+png(filename = paste0(outwdir, "tp_log_mixed_diagnostics.png"), width = 1200, height = 600)  # wider than tall
+
+par(mfrow = c(1, 2))
+plot(fitted(TP_log_mixed_model_selected), resid(TP_log_mixed_model_selected), 
+     pch = 20, col = "black", lty = "dotted", 
+     xlab = "Fitted Values", ylab = "Residuals", 
+     main = "Residuals vs Fitted")
+
+qqnorm(resid(TP_log_mixed_model_selected), main = "Normal Q-Q")
+qqline(resid(TP_log_mixed_model_selected), col = "red")  # Add Q-Q line
+# Add a horizontal line at y = 0 for reference
+abline(h = 0, col = "red", lty = 2)
+
+par(mfrow = c(1, 1))
 dev.off()
+
+hist(resid(TP_log_mixed_model_selected))
+
+report::report(TP_log_mixed_model_selected)
+
+
+
+library(lattice)
+dotplot(ranef(TP_log_mixed_model_selected,condVar=TRUE),
+        lattice.options=list(layout=c(1,2)))
+
 library(performance)
 
 # Diagnostic plots
 check_model(TP_log_mixed_model_selected)
 
-# Cook's distance plot
-
-png(filename=paste0(outwdir,"tp_log_mixed_diagnostics.png"), width=800, height=800)
-par(mfrow=c(2,2))
-plot(TP_log_mixed_model_selected)
-dev.off()
 library(jtools)
 summ(TP_log_mixed_model_selected)
 
-qqnorm(resid(TP_log_linear_model_selected), main = "Normal Q-Q Plot")
-qqline(resid(TP_log_linear_model_selected))
 
 effect_plot(TP_log_mixed_model_selected,pred = Aquatic_500_qt, interval = TRUE, plot.points = TRUE, 
             jitter = 0.05)
 
 visreg(TP_log_mixed_model_selected)
 
-hist(resid(TP_log_mixed_model_selected))
-plot(fitted(TP_log_mixed_model_selected), resid(TP_log_mixed_model_selected), 
-     xlab = "Fitted values", ylab = "Residuals", 
-     main = "Residuals vs Fitted values")
-abline(h = 0, col = "red")
-
-qqnorm(resid(TP_log_linear_model_selected), main = "Normal Q-Q Plot")
-plot(fitted(TP_log_linear_model_selected), sqrt(abs(resid(TP_log_linear_model_selected))),
-     xlab = "Fitted values", ylab = "Square root of standardized residuals", 
-     main = "Scale-Location Plot")
-abline(h = 0, col = "red")
 
 library(sjPlot)
 tab_model(TP_log_mixed_model_selected)
 
 
-library(MuMIn)library(MuMIn)TRUE
-r.squaredGLMM(TP_log_mixed_model_selected)
-
-null_model <- lmer(log_TP ~ 1 + (1 | Country), data = model_TP_df, REML = FALSE)
-full_model <- lmer(log_TP ~ Aquatic_500_qt + Forest_500_qt + Depth.t + (1 | Country), data = model_TP_df, REML = FALSE)
-
-deviance_null <- deviance(null_model)
-deviance_full <- deviance(full_model)
-
-deviance_explained <- (deviance_null - deviance_full) / deviance_null
-deviance_explained_percentage <- deviance_explained * 100
 
 #TP medi  removed forest, bio12, bio7
 input <- 'Mediterranean'
@@ -1063,6 +1059,7 @@ visreg(TP_log_temp_linear_model_selected)
 dev.off()
 
 ##TP temperate mixed 
+
 df <-model_TP_df[model_TP_df$bioregion == input,][,c('log_TP','TP','Natural_5_qt',  'Cropland_500_qt', 'Urban_500_qt',  'Depth.t', 
                                                      'Pastures.and.open.nature_500_qt', 'Aquatic_500_qt','Animals_cont.t','Area.t', 'bio1.t','bio12.t','Country')]
 
@@ -1179,8 +1176,29 @@ summary(TN_log_mixed_model)
 step(TN_log_mixed_model)
 TN_log_mixed_model_selected <-lmer(log_TN ~ Forest_500_qt + Area.t + Depth.t + (1 | Country),data = model_TN_df)
 summary(TN_log_mixed_model_selected)  
-dev.off()
 plot(TN_log_mixed_model_selected)
+
+
+#####Model Diagnostics
+png(filename = paste0(outwdir, "TN_log_mixed_diagnostics.png"), width = 1200, height = 600)  # wider than tall
+
+par(mfrow = c(1, 2))
+plot(fitted(TN_log_mixed_model_selected), resid(TN_log_mixed_model_selected), 
+     pch = 20, col = "black", lty = "dotted", 
+     xlab = "Fitted Values", ylab = "Residuals", 
+     main = "Residuals vs Fitted")
+
+qqnorm(resid(TN_log_mixed_model_selected), main = "Normal Q-Q")
+qqline(resid(TN_log_mixed_model_selected), col = "red")  # Add Q-Q line
+# Add a horizontal line at y = 0 for reference
+abline(h = 0, col = "red", lty = 2)
+
+par(mfrow = c(1, 1))
+dev.off()
+
+hist(resid(TN_log_mixed_model_selected))
+
+report::report(TN_log_mixed_model_selected)
 
 
 png(filename=paste0(outwdir,"TN_log_mixed_predictors.png"), width=800, height=800)
@@ -1257,6 +1275,7 @@ visreg(TN_log_temp_linear_model_selected)
 dev.off()
 
 #############TN temp mixed
+input <- 'Temperate'
 
 df <-model_TN_df[model_TN_df$bioregion == input,][,c('log_TN','TN','Natural_5_qt',  'Cropland_500_qt', 'Urban_500_qt',  'Depth.t', 
                                                      'Pastures.and.open.nature_500_qt', 'Aquatic_500_qt','Animals_cont.t','Area.t', 'bio1.t','bio12.t','Country')]
@@ -1274,14 +1293,35 @@ step(TN_log_temp_mixed_model)
 TN_log_temp_mixed_model_selected <-lmer(log_TN ~ Cropland_500_qt + Depth.t + bio12.t + (1 | Country),data = model_TN_df)
 summary(TN_log_temp_mixed_model_selected)  
 dev.off()
-plot(TN_log_mixed_model_selected)
+plot(TN_log_temp_mixed_model_selected)
+r.squaredGLMM(TN_log_temp_mixed_model_selected)
 
 
-png(filename=paste0(outwdir,"TN_log_mixed_predictors.png"), width=800, height=800)
+png(filename=paste0(outwdir,"TN_log_temp_mixed_predictors.png"), width=800, height=800)
 par(mfrow=c(2,2))
-visreg(TN_log_mixed_model_selected)
+visreg(TN_log_temp_mixed_model_selected)
 dev.off()
 
+#####Model Diagnostics
+png(filename = paste0(outwdir, "TN_log_temp_mixed_diagnostics.png"), width = 1200, height = 600)  # wider than tall
+
+par(mfrow = c(1, 2))
+plot(fitted(TN_log_temp_mixed_model_selected), resid(TN_log_temp_mixed_model_selected), 
+     pch = 20, col = "black", lty = "dotted", 
+     xlab = "Fitted Values", ylab = "Residuals", 
+     main = "Residuals vs Fitted")
+
+qqnorm(resid(TN_log_temp_mixed_model_selected), main = "Normal Q-Q")
+qqline(resid(TN_log_temp_mixed_model_selected), col = "red")  # Add Q-Q line
+# Add a horizontal line at y = 0 for reference
+abline(h = 0, col = "red", lty = 2)
+
+par(mfrow = c(1, 1))
+dev.off()
+
+hist(resid(TN_log_temp_mixed_model_selected))
+
+report::report(TN_log_temp_mixed_model_selected)
 # TN log CTN  removing Pastures.and.open.nature_500_qt, area.t,Aquatic_500_qt',
 input <- 'Continental'
 df <-model_TN_df[model_TN_df$bioregion == input,][,c('log_TN','TN','Natural_5_qt',  'Cropland_500_qt', 'Urban_500_qt',  'Depth.t', 
