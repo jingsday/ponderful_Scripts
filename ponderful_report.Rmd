@@ -1,0 +1,388 @@
+---
+title: "onderful_report"
+ouTNut: html_document
+date: "2024-09-26"
+
+---
+
+Part I: Prep
+==================================
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(include = FALSE)
+library(dplyr)
+library(mgcv)
+library(ggplot2)
+library(nlme)
+library(fitdistrplus)
+library(bestNormalize)
+library(visreg)
+library(lmerTest)
+library(corrplot)
+library(sjPlot)
+
+outwdir <- '/Users/lidiayung/PhD_project/project_PONDERFUL/ponderful_Scripts/ponderful_OUTPUT/'
+
+```
+
+```{r prep}
+
+phy_che <- read.csv('/Users/lidiayung/PhD_project/project_PONDERFUL/ponderful_OUTPUT/Phy_Che_qt.csv')
+## Bio climatic regions
+phy_che$bioregion <- 'Temperate'
+phy_che[phy_che$Country == 'Spain',]$bioregion <- 'Mediterranean'
+phy_che[phy_che$Country == 'Turkey',]$bioregion <- 'Continental'
+phy_che[phy_che$Country == 'Uruguay',]$bioregion <- 'Subtropical'
+
+
+##Factors and transformation 
+phy_che$Country <- as.factor(phy_che$Country)
+levels(phy_che$Country)
+
+###log transformation TP 
+shapiro.test(phy_che$TP)
+test <- bestNormalize(phy_che$TP)
+plot(test, leg_loc = "bottomright")
+
+phy_che$log_TP <- log(phy_che$TP,base=10)
+hist(phy_che$log_TP)
+shapiro.test(phy_che$log_TP)
+hist(phy_che$TP)
+
+hist(phy_che$log_TP)
+
+###log transformation TN 
+shapiro.test(phy_che$TN)
+test <- bestNormalize(phy_che$TN) #log10
+plot(test, leg_loc = "bottomright")
+
+phy_che$log_TN <- log(phy_che$TN,base=10)
+hist(phy_che$log_TN)
+shapiro.test(phy_che$log_TN)
+
+full_df_standardized_TN <- phy_che %>%
+  mutate(across(c(Natural_5_qt, Aquatic_500_qt, Cropland_500_qt, 
+                  Forest_500_qt, Pastures.and.open.nature_500_qt, 
+                  Urban_500_qt, Animals_cont.t, Area.t, Depth.t, 
+                  bio1.t,bio4.t,bio5.t,
+                  bio6.t,bio7.t,
+                  bio12.t,bio15.t,bio17.t), 
+                ~ scale(.)[, 1])) # Standardizing each column
+
+
+model_TN_df <- full_df_standardized_TN[,c('log_TN','TN','Natural_5_qt', 'Aquatic_500_qt', 'Cropland_500_qt', 
+                                          'Forest_500_qt', 'Pastures.and.open.nature_500_qt', 
+                                          'Urban_500_qt', 'Animals_cont.t', 'Area.t', 'Depth.t', 
+                                          'bio1.t','bio4.t','bio5.t',
+                                          'bio6.t','bio7.t',
+                                          'bio12.t','bio15.t','bio17.t','Country','bioregion','bio7')]
+
+model_TN_df <-na.omit(model_TN_df)
+
+full_df_standardized_TP <- phy_che %>%
+  mutate(across(c(Natural_5_qt, Aquatic_500_qt, Cropland_500_qt, 
+                  Forest_500_qt, Pastures.and.open.nature_500_qt, 
+                  Urban_500_qt, Animals_cont.t, Area.t, Depth.t, 
+                  bio1.t,bio4.t,bio5.t,
+                  bio6.t,bio7.t,
+                  bio12.t,bio15.t,bio17.t), 
+                ~ scale(.)[, 1])) # Standardizing each column
+
+model_TP_df <- full_df_standardized_TP[,c('log_TP','TP','Natural_5_qt', 'Aquatic_500_qt', 'Cropland_500_qt', 
+                                          'Forest_500_qt', 'Pastures.and.open.nature_500_qt', 
+                                          'Urban_500_qt', 'Animals_cont.t', 'Area.t', 'Depth.t', 
+                                          'bio1.t','bio4.t','bio5.t','bio6.t','bio7.t',
+                                          'bio12.t','bio15.t','bio17.t','Country','bioregion')]
+model_TP_df<-na.omit(model_TP_df)
+```
+
+
+
+
+Part II: Modeling
+==================================
+
+```{r Euromedi}
+input <- 'Uruguay'
+
+df <-model_TP_df[model_TP_df$Country != input,][,c('log_TP','TP','Natural_5_qt',  'Cropland_500_qt', 'Urban_500_qt',
+                                                'Depth.t','Forest_500_qt','Area.t','Pastures.and.open.nature_500_qt',
+                                                'Aquatic_500_qt','Animals_cont.t',
+                                                'bio1.t','bio7.t','bio5.t','bio12.t')]
+dim(df)
+
+corrplot(cor(df),order='alphabet',type='upper',tl.col='black',tl.srt = 45,main='Euro-Medi correlation plot')
+
+#take bio1 and bio7
+```
+
+```{r Euromedi TP GAM}
+#GAM gamma model
+TP_euromedi_gam_model_gamma <- gam(TP ~ s(Natural_5_qt) + s(Aquatic_500_qt) + 
+                            s(Cropland_500_qt) + s(Forest_500_qt) + 
+                            s(Pastures.and.open.nature_500_qt)+s(Urban_500_qt)+s(Animals_cont.t,k=5)+
+                            s(Area.t)+s(Depth.t)+s(bio1.t)+s(bio7.t), 
+                          data = df,family=Gamma(link='log'),select=TRUE)
+summary(TP_euromedi_gam_model_gamma)
+#removing non-sig vars
+TP_euromedi_gam_model_gamma_remove <- gam(TP ~ s(Natural_5_qt) + 
+                            s(Cropland_500_qt) + 
+                            s(Pastures.and.open.nature_500_qt)+s(Animals_cont.t,k=5)+
+                            s(Area.t)+s(Depth.t)+s(bio1.t)+s(bio7.t), 
+                          data = df,family=Gamma(link='log'),select=TRUE)
+
+summary(TP_euromedi_gam_model_gamma_remove)
+#setting knots 
+TP_euromedi_gam_model_gamma_remove <- gam(TP ~ s(Natural_5_qt) + 
+                            s(Cropland_500_qt) + 
+                            Pastures.and.open.nature_500_qt+s(Animals_cont.t,k=5)+
+                            s(Area.t)+Depth.t+s(bio1.t)+s(bio7.t), 
+                          data = df,family=Gamma(link='log'),select=TRUE)
+
+summary(TP_euromedi_gam_model_gamma_remove)
+
+##Selected
+TP_euromedi_gam_model_gamma_selected <- gam(TP ~  
+                            s(Cropland_500_qt) + 
+                            Pastures.and.open.nature_500_qt+s(Animals_cont.t,k=5)+
+                            s(Area.t)+Depth.t+s(bio1.t)+s(bio7.t), 
+                          data = df,family=Gamma(link='log'))
+
+summary(TP_euromedi_gam_model_gamma_selected)
+
+AIC(TP_euromedi_gam_model_gamma_remove,TP_euromedi_gam_model_gamma)
+
+##residuals 
+
+
+#test on landuse vars linear
+test <- gam(TP ~ Natural_5_qt + Aquatic_500_qt + 
+                            Cropland_500_qt + Forest_500_qt + 
+                            Pastures.and.open.nature_500_qt+Urban_500_qt+s(Animals_cont.t,k=5)+
+                            s(Area.t)+s(Depth.t)+s(bio1.t)+s(bio7.t), 
+                          data = df,family=Gamma(link='log'),select=TRUE)
+test_remove <- gam(TP ~ Natural_5_qt + Aquatic_500_qt + 
+                            Cropland_500_qt + Forest_500_qt + 
+                            Pastures.and.open.nature_500_qt+Urban_500_qt+s(Animals_cont.t,k=5)+
+                            s(Area.t)+Depth.t+s(bio1.t)+s(bio7.t), 
+                          data = df,family=Gamma(link='log'),select=TRUE)
+
+test_remove <- gam(TP ~Aquatic_500_qt + 
+                           Forest_500_qt + 
+                          +s(Animals_cont.t,k=5)+
+                            s(Area.t)+Depth.t+s(bio1.t)+s(bio7.t), 
+                          data = df,family=Gamma(link='log'),select=TRUE)
+
+summary(test_remove)
+```
+```{r diagnostics, echo=FALSE, message=FALSE, warning=FALSE}
+#
+outwdir <- '~/PhD_project/project_PONDERFUL/ponderful_Scripts/ponderful_OUTPUT/ponderful_OUTPUT_euromedi/'
+#Summary table
+
+tab_model(TP_euromedi_gam_model_gamma_selected,
+          file = paste0(outwdir, 'tp_euromedi_gam_sum.html'))
+
+
+
+
+#Predictors
+png(filename = paste0(outwdir, 'tp_euromedi_gam_predictors.png'), width = 800, height = 800)
+plot(TP_euromedi_gam_model_gamma_selected,shade=TRUE,page=1,rug=TRUE,all.terms = TRUE,residuals=TRUE)
+dev.off()
+
+
+#Diagnostics
+png(filename = paste0(outwdir, 'tp_euromedi_gam_diagnostics.png'), width = 800, height = 800)
+par(mfrow = c(2, 2), cex = 1.1)
+gam.check(TP_euromedi_gam_model_gamma_selected)
+dev.off()
+```
+```{r GLM log_TP}
+TP_log_euromedi_linear_model <- glm(log_TP ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt +
+                            Pastures.and.open.nature_500_qt +
+                             Urban_500_qt + Animals_cont.t + Area.t + Depth.t +
+                             bio1.t+bio7.t, 
+                           data = df)
+summary(TP_log_euromedi_linear_model)
+
+step(TP_log_euromedi_linear_model)
+
+TP_log_euromedi_linear_model_selected <- glm(formula = log_TP ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
+    Animals_cont.t + Depth.t + bio1.t, data = df)
+
+summary(TP_log_euromedi_linear_model_selected)
+summary(lm(formula = log_TP ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
+    Animals_cont.t + Depth.t + bio1.t, data = df))
+```
+```{r diagnostics, echo=FALSE, message=FALSE, warning=FALSE}
+png(filename=paste0(outwdir,"tp_log_euromedi_glm_diagnostics.png"), width=800, height=800)
+par(mfrow=c(2,2))
+plot(TP_log_euromedi_linear_model_selected)
+dev.off()
+
+png(filename=paste0(outwdir,"tp_log_euromedi_glm_predictors.png"), width=800, height=800)
+par(mfrow=c(3,2))
+visreg(TP_log_euromedi_linear_model_selected)
+dev.off()
+
+```
+
+
+
+```{r Euromedi TN GAM}
+input <- 'Uruguay'
+
+df <-model_TN_df[model_TN_df$Country != input,][,c('log_TN','TN','Natural_5_qt',  'Cropland_500_qt', 'Urban_500_qt',
+                                                'Depth.t','Forest_500_qt','Area.t','Pastures.and.open.nature_500_qt',
+                                                'Aquatic_500_qt','Animals_cont.t',
+                                                'bio1.t','bio7.t','bio5.t','bio12.t')]
+
+#GAM gamma model
+TN_euromedi_gam_model_gamma <- gam(TN ~ s(Natural_5_qt) + s(Aquatic_500_qt) + 
+                            s(Cropland_500_qt) + s(Forest_500_qt) + 
+                            s(Pastures.and.open.nature_500_qt)+s(Urban_500_qt)+s(Animals_cont.t,k=5)+
+                            s(Area.t)+s(Depth.t)+s(bio1.t)+s(bio7.t), 
+                          data = df,family=Gamma(link='log'),select=TRUE)
+summary(TN_euromedi_gam_model_gamma)
+#removing non-sig vars
+TN_euromedi_gam_model_gamma_remove <- gam(TN ~ 
+                            s(Forest_500_qt) + 
+                            s(Pastures.and.open.nature_500_qt)+
+                            s(Area.t)+s(Depth.t)+s(bio1.t)+s(bio7.t), 
+                          data = df,family=Gamma(link='log'))
+summary(TN_euromedi_gam_model_gamma_remove)
+plot(TN_euromedi_gam_model_gamma_remove,page=1)
+
+
+#setting knots 
+TN_euromedi_gam_model_gamma_remove <- gam(TN ~ 
+                            s(Cropland_500_qt) + 
+                            Pastures.and.open.nature_500_qt+s(Animals_cont.t,k=5)+
+                            s(Area.t)+Depth.t+s(bio1.t)+s(bio7.t), 
+                          data = df,family=Gamma(link='log'),select=TRUE)
+
+summary(TN_euromedi_gam_model_gamma_remove)
+AIC(TN_euromedi_gam_model_gamma_remove,TN_euromedi_gam_model_gamma)
+
+
+##Selected
+TN_euromedi_gam_model_gamma_selected <- gam(TN ~  
+                            s(Cropland_500_qt) + 
+                            Pastures.and.open.nature_500_qt+s(Animals_cont.t,k=5)+
+                            s(Area.t)+Depth.t+s(bio1.t)+s(bio7.t), 
+                          data = df,family=Gamma(link='log'))
+
+summary(TN_euromedi_gam_model_gamma_selected)
+
+AIC(TN_euromedi_gam_model_gamma_remove,TN_euromedi_gam_model_gamma)
+
+##residuals 
+
+
+#test on landuse vars linear
+test <- gam(TN ~ Natural_5_qt + Aquatic_500_qt + 
+                            Cropland_500_qt + Forest_500_qt + 
+                            Pastures.and.open.nature_500_qt+Urban_500_qt+s(Animals_cont.t,k=5)+
+                            s(Area.t)+s(Depth.t)+s(bio1.t)+s(bio7.t), 
+                          data = df,family=Gamma(link='log'),select=TRUE)
+summary(test)
+euromedi_gam_linear_landuse <- gam(TN ~  Forest_500_qt + 
+                            Pastures.and.open.nature_500_qt+
+                            s(Area.t)+s(Depth.t)+s(bio1.t)+s(bio7.t), 
+                          data = df,family=Gamma(link='log'))
+
+summary(euromedi_gam_linear_landuse)
+
+plot(test_remove,page=1,shade=TRUE,rug=TRUE,residuals=TRUE,all.terms = TRUE)
+```
+
+
+```{r diagnostics, echo=FALSE, message=FALSE, warning=FALSE}
+
+#Predictors
+png(filename = paste0(outwdir, 'TN_euromedi_gam_predictors.png'), width = 800, height = 800)
+plot(euromedi_gam_linear_landuse,shade=TRUE,page=1,rug=TRUE,all.terms = TRUE,residuals=TRUE)
+dev.off()
+
+
+#Diagnostics
+png(filename = paste0(outwdir, 'TN_euromedi_gam_diagnostics.png'), width = 800, height = 800)
+par(mfrow = c(2, 2), cex = 1.1)
+gam.check(euromedi_gam_linear_landuse)
+dev.off()
+```
+
+
+```{r GLM log_TN}
+TN_log_euromedi_linear_model <- glm(log_TN ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt +
+                            Pastures.and.open.nature_500_qt +
+                             Urban_500_qt + Animals_cont.t + Area.t + Depth.t +
+                             bio1.t+bio7.t, 
+                           data = df)
+summary(TN_log_euromedi_linear_model)
+
+step(TN_log_euromedi_linear_model)
+
+TN_log_euromedi_linear_model_selected <- glm(formula = log_TN ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
+    Animals_cont.t + Area.t + Depth.t + bio7.t, data = df)
+
+
+summary(TN_log_euromedi_linear_model_selected)
+summary(lm(formula = log_TN ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
+    Animals_cont.t + Area.t + Depth.t + bio7.t, data = df))
+```
+
+```{r diagnostics, echo=FALSE, message=FALSE, warning=FALSE}
+png(filename=paste0(outwdir,"TN_log_euromedi_glm_diagnostics.png"), width=800, height=800)
+par(mfrow=c(2,2))
+plot(TN_log_euromedi_linear_model_selected)
+dev.off()
+
+png(filename=paste0(outwdir,"TN_log_euromedi_glm_predictors.png"), width=800, height=800)
+par(mfrow=c(3,2))
+visreg(TN_log_euromedi_linear_model_selected)
+dev.off()
+
+```
+
+Part III Temperate spatial autocorrelation
+------------------
+```{r}
+library(sp)
+library(rgdal)
+library(maptools)
+library(mapplots)
+library(reshape)
+
+input <-'Temperate'
+library(sf)
+library(reshape2)  # For melt function, if not already loaded
+
+# Filter the data for the given bioregion
+df <- phy_che[phy_che$bioregion == input,]
+
+# Convert to an sf object using longitude (X) and latitude (Y)
+df_sf <- st_as_sf(df, coords = c("X", "Y"), crs = 4326)  # WGS84: EPSG 4326
+
+# Transform to UTM zone 28 (or appropriate zone for your region)
+df_utm <- st_transform(df_sf, crs = 32628)  # UTM zone 28N (adjust zone if needed)
+
+# Extract transformed coordinates
+newCoords <- st_coordinates(df_utm)
+
+# Combine the transformed coordinates with the original data
+df_transformed <- cbind(newCoords, df)
+
+# Select relevant columns
+Phyto_df <- subset(df_transformed, select = c(X, Y, sampleid, OtherPhyto, Anabaena, Oocystis))
+
+# Melt the data for visualization
+Phyto_melt <- melt(Phyto_df, id = c("X", "Y", "sampleid"))
+
+# Create a 3D grid or point cloud using the make.xyz function
+Phxyz <- make.xyz(x = Phyto_melt$X, y = Phyto_melt$Y, z = Phyto_melt$value, group = Phyto_melt$variable)
+
+# `Phxyz` now contains the transformed coordinates along with the data values
+
+```
