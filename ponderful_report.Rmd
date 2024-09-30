@@ -182,16 +182,22 @@ outwdir <- '~/PhD_project/project_PONDERFUL/ponderful_Scripts/ponderful_OUTPUT/p
 
 tab_model(TP_euromedi_gam_model_gamma_selected,
           file = paste0(outwdir, 'tp_euromedi_gam_sum.html'))
+png(filename = paste0(outwdir, 'tp_euromedi_gam_predictors.png'), width = 35, height = 20, units = 'cm', res = 300) 
 
+par(mfrow = c(2, 4), mar = c(4, 4, 2, 2), oma = c(2, 2, 2, 2), mgp = c(3, 1, 0))
+plot(TP_euromedi_gam_model_gamma_selected,
+     shade = TRUE,
+     page = 1,
+     rug = TRUE,
+     residuals = TRUE,
+     cex.axis = 1.5, 
+     cex.lab = 1.5,)
 
-
-
-#Predictors
-png(filename = paste0(outwdir, 'tp_euromedi_gam_predictors.png'), width = 800, height = 800)
-plot(TP_euromedi_gam_model_gamma_selected,shade=TRUE,page=1,rug=TRUE,all.terms = TRUE,residuals=TRUE)
+# Turn off the device
 dev.off()
 
 
+print(
 #Diagnostics
 png(filename = paste0(outwdir, 'tp_euromedi_gam_diagnostics.png'), width = 800, height = 800)
 par(mfrow = c(2, 2), cex = 1.1)
@@ -216,19 +222,27 @@ summary(lm(formula = log_TP ~ Cropland_500_qt + Pastures.and.open.nature_500_qt 
     Animals_cont.t + Depth.t + bio1.t, data = df))
 ```
 ```{r diagnostics, echo=FALSE, message=FALSE, warning=FALSE}
-png(filename=paste0(outwdir,"tp_log_euromedi_glm_diagnostics.png"), width=800, height=800)
-par(mfrow=c(2,2))
-plot(TP_log_euromedi_linear_model_selected)
+png(filename=paste0(outwdir, "tp_log_euromedi_glm_diagnostics.png"))#, units = "cm", res=600)
+par(mfrow = c(2,2))  # 2x2 layout
+#par(mar = c(4, 4, 2, 2))  # Adjust margins for individual plots (bottom, left, top, right)
+par(oma = c(6,6,6,6))  # Increase outer margins to avoid cutting off plots
+plot(TP_log_euromedi_linear_model_selected, cex.axis = 1.5, cex.lab = 1.5)
+
 dev.off()
 
-png(filename=paste0(outwdir,"tp_log_euromedi_glm_predictors.png"), width=800, height=800)
-par(mfrow=c(3,2))
-visreg(TP_log_euromedi_linear_model_selected)
-dev.off()
 
 ```
 
 
+```{r}
+
+print(
+png(filename=paste0(outwdir,"tp_log_euromedi_glm_predictors.png"), width = 40, height = 30, units = "cm",res=300)
+par(mfrow=c(3,2))
+par(mar = c(3.5, 3.5, 1, 1), mgp = c(2, 0.7, 0))
+visreg(TP_log_euromedi_linear_model_selected,cex.axis = 1.5,  cex.lab = 1.5)
+dev.off()
+```
 
 ```{r Euromedi TN GAM}
 input <- 'Uruguay'
