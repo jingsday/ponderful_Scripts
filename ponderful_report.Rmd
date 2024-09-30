@@ -20,8 +20,10 @@ library(visreg)
 library(lmerTest)
 library(corrplot)
 library(sjPlot)
+library(gratia) 
+library(patchwork)
 
-outwdir <- '/Users/lidiayung/PhD_project/project_PONDERFUL/ponderful_Scripts/ponderful_OUTPUT/'
+outwdir <- '/Users/lidiayung/PhD_project/project_PONDERFUL/ponderful_Scripts/ponderful_OUTPUT/ponderdul_OUTPUT_publication'
 
 ```
 
@@ -102,7 +104,7 @@ model_TP_df<-na.omit(model_TP_df)
 Part II: Modeling
 ==================================
 
-```{r Euromedi}
+```{r Euromedi corr}
 input <- 'Uruguay'
 
 df <-model_TP_df[model_TP_df$Country != input,][,c('log_TP','TP','Natural_5_qt',  'Cropland_500_qt', 'Urban_500_qt',
@@ -138,7 +140,6 @@ TP_euromedi_gam_model_gamma_remove <- gam(TP ~ s(Natural_5_qt) +
                             Pastures.and.open.nature_500_qt+s(Animals_cont.t,k=5)+
                             s(Area.t)+Depth.t+s(bio1.t)+s(bio7.t), 
                           data = df,family=Gamma(link='log'),select=TRUE)
-
 summary(TP_euromedi_gam_model_gamma_remove)
 
 ##Selected
@@ -174,17 +175,9 @@ test_remove <- gam(TP ~Aquatic_500_qt +
                           data = df,family=Gamma(link='log'),select=TRUE)
 
 summary(test_remove)
-```
-```{r diagnostics, echo=FALSE, message=FALSE, warning=FALSE}
-#
-outwdir <- '~/PhD_project/project_PONDERFUL/ponderful_Scripts/ponderful_OUTPUT/ponderful_OUTPUT_euromedi/'
-#Summary table
 
-tab_model(TP_euromedi_gam_model_gamma_selected,
-          file = paste0(outwdir, 'tp_euromedi_gam_sum.html'))
-png(filename = paste0(outwdir, 'tp_euromedi_gam_predictors.png'), width = 35, height = 20, units = 'cm', res = 300) 
-
-par(mfrow = c(2, 4), mar = c(4, 4, 2, 2), oma = c(2, 2, 2, 2), mgp = c(3, 1, 0))
+#Quick view 
+summary(TP_euromedi_gam_model_gamma_selected)
 plot(TP_euromedi_gam_model_gamma_selected,
      shade = TRUE,
      page = 1,
@@ -193,56 +186,110 @@ plot(TP_euromedi_gam_model_gamma_selected,
      cex.axis = 1.5, 
      cex.lab = 1.5,)
 
-# Turn off the device
-dev.off()
-
-
-print(
-#Diagnostics
-png(filename = paste0(outwdir, 'tp_euromedi_gam_diagnostics.png'), width = 800, height = 800)
-par(mfrow = c(2, 2), cex = 1.1)
 gam.check(TP_euromedi_gam_model_gamma_selected)
-dev.off()
 ```
-```{r GLM log_TP}
+
+```{r Plots for publications}
+#Sum table
+tab_model(TP_euromedi_gam_model_gamma_selected,
+          file = paste0(outwdir, 'tp_euromedi_gam_sum.doc'))
+#ggsave version 
+p1 <- draw(TP_euromedi_gam_model_gamma_selected, select = "s(Cropland_500_qt)", residuals = TRUE)
+p2 <- draw(TP_euromedi_gam_model_gamma_selected, select = "s(Animals_cont.t)", residuals = TRUE)
+p3 <- draw(TP_euromedi_gam_model_gamma_selected, select = "s(Area.t)", residuals = TRUE)
+p4 <- draw(TP_euromedi_gam_model_gamma_selected, select = "s(bio1.t)", residuals = TRUE)
+p5 <- draw(TP_euromedi_gam_model_gamma_selected, select = "s(bio7.t)", residuals = TRUE)
+
+combined_plot <- p1 + p2 +p3+p4+p5 +plot_layout(ncol = 3,nrow=2)
+
+#ggsave(filename = paste0(outwdir, "tp_euromedi_gam_predictors_ggplot.svg"), 
+#       plot = combined_plot, 
+#       width = 12, 
+#       height = 8, 
+#       units = "in",   
+#       dpi = 600)   
+
+#Predictors
+visreg(TP_euromedi_gam_model_gamma_selected)
+ggsave(filename = paste0(outwdir, 'tp_euromedi_gam_predictors_full.svg'), 
+       plot = combined_plot, 
+       width = 12, height = 10, units = "in", dpi = 600)
+
+#Diagnostic plots
+diagnostic_plots <- appraise(TP_euromedi_gam_model_gamma_selected)
+ggsave(filename = paste0(outwdir, 'tp_euromedi_gam_diagnostics.svg'), 
+       plot = diagnostic_plots, 
+       width = 10, height = 10, units = "in",dpi = 600)
+
+
+```
+
+
+
+```{r Euromedi GLM TP family gamma}
+TP_glm_euromedi_gamma <- glm(formula = TP ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
+    Animals_cont.t + Depth.t + bio1.t, family = Gamma(link = "log"), 
+    data = df)
+
+summary(TP_glm_euromedi_gamma)
+
+stepAIC(TP_glm_euromedi_gamma)
+
+TP_glm_euromedi_gamma_selected <- glm(formula = TP ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
+                                        Animals_cont.t + Depth.t + bio1.t, family = Gamma(link = "log"), data = df)
+summary(TP_glm_euromedi_gamma_selected)
+
+```
+```{r Plots for publication}
+#Sum tab
+tab_model(TP_glm_euromedi_gamma_selected,
+          file = paste0(outwdir, 'tp_euromedi_glm_sum.doc'))
+#Predictors 
+plots <- visreg(TP_glm_euromedi_gamma_selected,gg=TRUE)
+combined_plot <- wrap_plots(plots)
+
+ggsave(filename = paste0(outwdir, 'tp_euromedi_glm_predictors.svg'), 
+       plot = combined_plot, 
+       width = 12, height = 10, units = "in", dpi = 600)
+
+#Diagnostic plots
+diagnostic_plots <- appraise(TP_glm_euromedi_gamma_selected)
+ggsave(filename = paste0(outwdir, 'tp_glm_euromedi_gamma_diagnostics.svg'), 
+       plot = diagnostic_plots, 
+       width = 10, height = 10, units = "in",dpi = 600)
+
+```
+
+
+```{r Euromedi GLM log_TP}
 TP_log_euromedi_linear_model <- glm(log_TP ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt +
                             Pastures.and.open.nature_500_qt +
                              Urban_500_qt + Animals_cont.t + Area.t + Depth.t +
                              bio1.t+bio7.t, 
                            data = df)
 summary(TP_log_euromedi_linear_model)
-
+tab_model(TP_log_euromedi_linear_model_selected)
 step(TP_log_euromedi_linear_model)
 
 TP_log_euromedi_linear_model_selected <- glm(formula = log_TP ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
     Animals_cont.t + Depth.t + bio1.t, data = df)
-
+tab_model(TP_log_euromedi_linear_model_selected)
 summary(TP_log_euromedi_linear_model_selected)
 summary(lm(formula = log_TP ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
     Animals_cont.t + Depth.t + bio1.t, data = df))
-```
-```{r diagnostics, echo=FALSE, message=FALSE, warning=FALSE}
-png(filename=paste0(outwdir, "tp_log_euromedi_glm_diagnostics.png"))#, units = "cm", res=600)
-par(mfrow = c(2,2))  # 2x2 layout
-#par(mar = c(4, 4, 2, 2))  # Adjust margins for individual plots (bottom, left, top, right)
-par(oma = c(6,6,6,6))  # Increase outer margins to avoid cutting off plots
+
+test <-  glm(TP ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt +
+                            Pastures.and.open.nature_500_qt +
+                             Urban_500_qt + Animals_cont.t + Area.t + Depth.t +
+                             bio1.t+bio7.t, family=Gamma(link='log'),data = df)
+stepAIC(test)
+
+#Quick view 
 plot(TP_log_euromedi_linear_model_selected, cex.axis = 1.5, cex.lab = 1.5)
 
-dev.off()
-
-
 ```
 
 
-```{r}
-
-print(
-png(filename=paste0(outwdir,"tp_log_euromedi_glm_predictors.png"), width = 40, height = 30, units = "cm",res=300)
-par(mfrow=c(3,2))
-par(mar = c(3.5, 3.5, 1, 1), mgp = c(2, 0.7, 0))
-visreg(TP_log_euromedi_linear_model_selected,cex.axis = 1.5,  cex.lab = 1.5)
-dev.off()
-```
 
 ```{r Euromedi TN GAM}
 input <- 'Uruguay'
@@ -283,7 +330,7 @@ AIC(TN_euromedi_gam_model_gamma_remove,TN_euromedi_gam_model_gamma)
 ##Selected
 TN_euromedi_gam_model_gamma_selected <- gam(TN ~  
                             s(Cropland_500_qt) + 
-                            Pastures.and.open.nature_500_qt+s(Animals_cont.t,k=5)+
+                            Pastures.and.open.nature_500_qt+
                             s(Area.t)+Depth.t+s(bio1.t)+s(bio7.t), 
                           data = df,family=Gamma(link='log'))
 
@@ -292,8 +339,6 @@ summary(TN_euromedi_gam_model_gamma_selected)
 AIC(TN_euromedi_gam_model_gamma_remove,TN_euromedi_gam_model_gamma)
 
 ##residuals 
-
-
 #test on landuse vars linear
 test <- gam(TN ~ Natural_5_qt + Aquatic_500_qt + 
                             Cropland_500_qt + Forest_500_qt + 
@@ -307,33 +352,56 @@ euromedi_gam_linear_landuse <- gam(TN ~  Forest_500_qt +
                           data = df,family=Gamma(link='log'))
 
 summary(euromedi_gam_linear_landuse)
+#Quick view 
+plot(euromedi_gam_linear_landuse,shade=TRUE,page=1,rug=TRUE,all.terms = TRUE,residuals=TRUE)
+gam.check(euromedi_gam_linear_landuse)
 
-plot(test_remove,page=1,shade=TRUE,rug=TRUE,residuals=TRUE,all.terms = TRUE)
 ```
+```{r Plots for publication}
+#Sum table
+tab_model(TN_euromedi_gam_model_gamma_selected,
+          file = paste0(outwdir, 'TN_euromedi_gam_sum.doc'))
+#ggplots version (scaled?)
+p1 <- draw(TN_euromedi_gam_model_gamma_selected, select = "s(Cropland_500_qt)", residuals = TRUE)
+p3 <- draw(TN_euromedi_gam_model_gamma_selected, select = "s(Area.t)", residuals = TRUE)
+p4 <- draw(TN_euromedi_gam_model_gamma_selected, select = "s(bio1.t)", residuals = TRUE)
+p5 <- draw(TN_euromedi_gam_model_gamma_selected, select = "s(bio7.t)", residuals = TRUE)
 
+combined_plot <- p1 +p3+p4+p5 +plot_layout(ncol = 2,nrow=2)
 
-```{r diagnostics, echo=FALSE, message=FALSE, warning=FALSE}
+#ggsave(filename = paste0(outwdir, "TN_euromedi_gam_predictors_ggplot.svg"), 
+#       plot = combined_plot, 
+#       width = 12, 
+#       height = 8, 
+#       units = "in",   
+#       dpi = 600)   
 
 #Predictors
-png(filename = paste0(outwdir, 'TN_euromedi_gam_predictors.png'), width = 800, height = 800)
-plot(euromedi_gam_linear_landuse,shade=TRUE,page=1,rug=TRUE,all.terms = TRUE,residuals=TRUE)
-dev.off()
+plots <- visreg(TN_euromedi_gam_model_gamma_selected,gg=TRUE)
+combined_plot <- wrap_plots(plots)
 
+ggsave(filename = paste0(outwdir, 'TN_euromedi_glm_predictors_full.svg'), 
+       plot = combined_plot, 
+       width = 12, height = 10, units = "in", dpi = 600)
 
-#Diagnostics
-png(filename = paste0(outwdir, 'TN_euromedi_gam_diagnostics.png'), width = 800, height = 800)
-par(mfrow = c(2, 2), cex = 1.1)
-gam.check(euromedi_gam_linear_landuse)
-dev.off()
+#Diagnostic plots
+diagnostic_plots <- appraise(TN_euromedi_gam_model_gamma_selected)
+
+ggsave(file = paste0(outwdir, 'TN_euromedi_gam_diagnostics.svg'), 
+       plot = diagnostic_plots, 
+       width = 10, height = 10, units = "in",dpi = 600)
+
 ```
 
 
-```{r GLM log_TN}
+
+```{r Euromedi GLM log_TN}
 TN_log_euromedi_linear_model <- glm(log_TN ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt +
                             Pastures.and.open.nature_500_qt +
                              Urban_500_qt + Animals_cont.t + Area.t + Depth.t +
                              bio1.t+bio7.t, 
                            data = df)
+
 summary(TN_log_euromedi_linear_model)
 
 step(TN_log_euromedi_linear_model)
@@ -345,58 +413,169 @@ TN_log_euromedi_linear_model_selected <- glm(formula = log_TN ~ Cropland_500_qt 
 summary(TN_log_euromedi_linear_model_selected)
 summary(lm(formula = log_TN ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
     Animals_cont.t + Area.t + Depth.t + bio7.t, data = df))
-```
 
-```{r diagnostics, echo=FALSE, message=FALSE, warning=FALSE}
-png(filename=paste0(outwdir,"TN_log_euromedi_glm_diagnostics.png"), width=800, height=800)
-par(mfrow=c(2,2))
+
+test<-  glm(TN ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt +
+                            Pastures.and.open.nature_500_qt +
+                             Urban_500_qt + Animals_cont.t + Area.t + Depth.t +
+                             bio1.t+bio7.t, family=Gamma(link='log'),
+                           data = df)
+stepAIC(test)
+
+test <-glm(formula = TN ~ Cropland_500_qt + Animals_cont.t + Area.t + 
+    Depth.t + bio7.t, family = Gamma(link = "log"), data = df)
+tab_model(test)
+
+#Quick view
 plot(TN_log_euromedi_linear_model_selected)
-dev.off()
-
-png(filename=paste0(outwdir,"TN_log_euromedi_glm_predictors.png"), width=800, height=800)
-par(mfrow=c(3,2))
 visreg(TN_log_euromedi_linear_model_selected)
-dev.off()
 
 ```
 
-Part III Temperate spatial autocorrelation
+```{r Plots for publication}
+#Sum table
+tab_model(TN_log_euromedi_linear_model_selected,
+          file = paste0(outwdir, 'TN_euromedi_glm_sum.doc'))
+#Predictors
+plots <- visreg(TN_log_euromedi_linear_model_selected,gg=TRUE)
+combined_plot <- wrap_plots(plots)
+
+ggsave(filename = paste0(outwdir, 'TN_euromedi_glm_predictors.svg'), 
+       plot = combined_plot, 
+       width = 12, height = 10, units = "in", dpi = 600)
+
+#Diagnostic plots
+diagnostic_plots <- appraise(TN_log_euromedi_linear_model_selected)
+ggsave(filename = paste0(outwdir, 'TN_glm_euromedi_gamma_diagnostics.svg'), 
+       plot = diagnostic_plots, 
+       width = 10, height = 10, units = "in",dpi = 600)
+```
+
+
+
+Part III Temperate
 ------------------
-```{r}
-library(sp)
-library(rgdal)
-library(maptools)
-library(mapplots)
-library(reshape)
+```{r Temperate corr}
+input<- 'Temperate'#Temperate, Mediterranean, Continental, Subtropical
+df <-model_TP_df[model_TP_df$bioregion == input,][,c('TP','Natural_5_qt', 'Aquatic_500_qt', 'Cropland_500_qt', 
+                                                       'Forest_500_qt', 'Pastures.and.open.nature_500_qt', 
+                                                       'Urban_500_qt', 'Animals_cont.t', 'Area.t', 'Depth.t', 
+                                                       'bio1.t','bio7.t',
+                                                       'bio12.t')]
+dim(df)
+df <-na.omit(df)
+corrplot(cor(df), type = "upper", order = "alphabet",tl.col = "black", tl.srt = 45)
+cor(df)
+```
 
-input <-'Temperate'
-library(sf)
-library(reshape2)  # For melt function, if not already loaded
+```{r Temp GAM}
 
-# Filter the data for the given bioregion
-df <- phy_che[phy_che$bioregion == input,]
+TP_gam_temp <- gam(TP ~ s(Natural_5_qt) + s(Aquatic_500_qt) + 
+                     s(Cropland_500_qt) +
+                     s(Pastures.and.open.nature_500_qt) + s(Urban_500_qt) +
+                     s(Animals_cont.t,k=4) + s(Depth.t)+s(bio1.t),  
+                   data = df, family = Gamma(link = "log"))
+summary(TP_gam_temp)
 
-# Convert to an sf object using longitude (X) and latitude (Y)
-df_sf <- st_as_sf(df, coords = c("X", "Y"), crs = 4326)  # WGS84: EPSG 4326
+TP_gam_temp_remove <- gam(TP ~ 
+                            s(Cropland_500_qt) +
+                            s(Pastures.and.open.nature_500_qt) + s(Urban_500_qt) +
+                            s(Animals_cont.t,k=4) + s(Depth.t)+s(bio1.t),  
+                          data = df, family = Gamma(link = "log"),SELECT=TRUE)
+summary(TP_gam_temp_remove)
 
-# Transform to UTM zone 28 (or appropriate zone for your region)
-df_utm <- st_transform(df_sf, crs = 32628)  # UTM zone 28N (adjust zone if needed)
+TP_gam_temp_selected <- gam(TP ~ 
+                              s(Cropland_500_qt) +
+                              Pastures.and.open.nature_500_qt + s(Urban_500_qt) +
+                              s(Animals_cont.t,k=4) + Depth.t+s(bio1.t),  
+                            data = df, family = Gamma(link = "log"))
 
-# Extract transformed coordinates
-newCoords <- st_coordinates(df_utm)
-
-# Combine the transformed coordinates with the original data
-df_transformed <- cbind(newCoords, df)
-
-# Select relevant columns
-Phyto_df <- subset(df_transformed, select = c(X, Y, sampleid, OtherPhyto, Anabaena, Oocystis))
-
-# Melt the data for visualization
-Phyto_melt <- melt(Phyto_df, id = c("X", "Y", "sampleid"))
-
-# Create a 3D grid or point cloud using the make.xyz function
-Phxyz <- make.xyz(x = Phyto_melt$X, y = Phyto_melt$Y, z = Phyto_melt$value, group = Phyto_melt$variable)
-
-# `Phxyz` now contains the transformed coordinates along with the data values
+#Quick view
+summary(TP_gam_temp_selected)
+plot(TP_gam_temp_selected,shade=TRUE, rug=TRUE,page=1,residuals=TRUE)
+gam.check(TP_gam_temp_selected)
 
 ```
+```{r Gam Publication plots}
+
+#Sum table
+tab_model(TP_gam_temp_selected,
+          file = paste0(outwdir, 'tp_temp_gam_sum.doc'))
+
+#Predictors
+plots <- visreg(TP_gam_temp_selected,gg=TRUE)
+combined_plot <- wrap_plots(plots)
+
+ggsave(filename = paste0(outwdir, 'tp_temp_gam_predictors_full.svg'), 
+       plot = combined_plot, 
+       width = 12, height = 10, units = "in", dpi = 600)
+
+#Diagnostic plots
+diagnostic_plots <- appraise(TP_gam_temp_selected)
+ggsave(file = paste0(outwdir, 'tp_temp_gam_diagnostics.svg'), 
+       plot = diagnostic_plots, 
+       width = 10, height = 10, units = "in",dpi = 600)
+```
+
+
+```{r TP GLM /log Temp}
+input <- 'Temperate'
+df <-model_TP_df[model_TP_df$bioregion == input,][,c('log_TP','TP','Natural_5_qt',  'Cropland_500_qt', 'Urban_500_qt',  'Depth.t', 
+                                                     'Pastures.and.open.nature_500_qt', 'Aquatic_500_qt','Animals_cont.t','Area.t', 'bio1.t','bio12.t')]
+dim(df)
+na.omit(df)
+TP_log_temp_linear_model <- glm(log_TP ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt +
+                                  Pastures.and.open.nature_500_qt +
+                                  Urban_500_qt + Animals_cont.t + Area.t + Depth.t +
+                                  bio1.t +bio12.t , 
+                                data = df)
+summary(TP_log_temp_linear_model)
+stepAIC(TP_log_temp_linear_model)
+
+TP_log_temp_linear_model_selected <-  glm(formula = log_TP ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
+                                            Animals_cont.t + Depth.t + bio12.t, data = df)
+
+summary(TP_log_temp_linear_model_selected)
+summary(lm(formula = log_TP ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
+             Animals_cont.t + Depth.t + bio12.t, data = df))
+
+#Quick view
+plot(TP_log_temp_linear_model_selected)
+visreg(TP_log_temp_linear_model_selected)
+
+#GLM family GAMMA
+test <- glm(TP ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt +
+              Pastures.and.open.nature_500_qt +
+              Urban_500_qt + Animals_cont.t + Area.t + Depth.t +bio1.t +bio12.t, 
+            data = df,family=Gamma(link='log'))
+stepAIC(test)
+
+TP_temp_linear_model_selected <-glm(formula = TP ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
+    Animals_cont.t + Area.t + Depth.t + bio12.t, family = Gamma(link = "log"), 
+    data = df)
+summary(TP_temp_linear_model_selected)
+tab_model(TP_temp_linear_model_selected)
+
+
+```
+
+```{r GLM Plots for publication}
+
+#sum table
+tab_model(TP_temp_linear_model_selected,
+          file = paste0(outwdir, 'tp_temp_glm_sum.doc'))
+#Visreg predictors
+plots <- visreg(TP_temp_linear_model_selected,gg=TRUE)
+combined_plot <- wrap_plots(plots)
+
+ggsave(filename = paste0(outwdir, 'tp_temp_glm_predictors.svg'), 
+       plot = combined_plot, 
+       width = 12, height = 10, units = "in", dpi = 600)
+
+#Diagnostic plots
+diagnostic_plots <- appraise(TP_temp_linear_model_selected)
+ggsave(filename = paste0(outwdir, 'tp_glm_temp_gamma_diagnostics.svg'), 
+       plot = diagnostic_plots, 
+       width = 10, height = 10, units = "in",dpi = 600)
+```
+
