@@ -772,4 +772,120 @@ ggsave(filename = paste0(outwdir, 'tp_ctn_glm_gamma_diagnostics.svg'),
        width = 10, height = 10, units = "in",dpi = 600)
 
 ```
+Part V: Mediterranean
+==================================
 
+```{r}
+input <- 'Mediterranean'
+colnames(model_TP_df)
+df <-model_TP_df[model_TP_df$bioregion == input,][,c('log_TP','TP','Natural_5_qt', 
+                                                     'Cropland_500_qt', 'Urban_500_qt',  'Depth.t','Area.t',
+                                                     'Pastures.and.open.nature_500_qt',
+                                                     'Aquatic_500_qt','Animals_cont.t', 'bio1.t')]
+hist(df$log_TP)
+dim(df)
+descdist(df$TP,discrete=FALSE)
+
+```
+
+
+```{r}
+TP_log_medi_linear_model <- glm(log_TP ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt +
+                            Pastures.and.open.nature_500_qt +
+                             Urban_500_qt + Animals_cont.t + Area.t + Depth.t +
+                             bio1.t, 
+                           data = df)
+summary(TP_log_medi_linear_model)
+stepAIC(TP_log_medi_linear_model)
+
+TP_log_medi_linear_model_selected <- glm(formula = log_TP ~ Natural_5_qt + Cropland_500_qt + Urban_500_qt + 
+                                           Animals_cont.t + bio1.t, data = df)
+
+
+summary(TP_log_medi_linear_model_selected)
+summary(lm(formula = log_TP ~ Natural_5_qt + Cropland_500_qt + Urban_500_qt + 
+             Animals_cont.t + bio1.t, data = df))
+
+TP_medi_linear_model <- glm(TP ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt +
+                            Pastures.and.open.nature_500_qt +
+                             Urban_500_qt + Animals_cont.t + Area.t + Depth.t +
+                             bio1.t,family=Gamma(link='log'), 
+                           data = df)
+
+summary(TP_medi_linear_model)
+stepAIC(TP_medi_linear_model)
+
+TP_medi_linear_model_selected <-glm(formula = TP ~ Natural_5_qt + Cropland_500_qt + Urban_500_qt + 
+    Animals_cont.t + Area.t + bio1.t, family = Gamma(link = "log"), 
+    data = df)
+tab_model(TP_medi_linear_model_selected)
+
+
+```
+
+```{r Plots for publication}
+#Sum tab
+tab_model(
+  TP_medi_linear_model_selected, 
+  show.intercept = TRUE, 
+  transform = NULL,file = paste0(outwdir, 'tp_medi_glm_gamma_sum.doc'))
+
+#Predictors 
+plots <- visreg(TP_medi_linear_model_selected,gg=TRUE,scale='response',residuals=TRUE)
+combined_plot <- wrap_plots(plots)
+ggsave(filename = paste0(outwdir, 'tp_medi_glm_gamma_predictors.svg'), 
+       plot = combined_plot, 
+       width = 12, height = 10, units = "in", dpi = 600)
+
+#Diagnostic plots
+diagnostic_plots <- appraise(TP_medi_linear_model_selected)
+ggsave(filename = paste0(outwdir, 'tp_medi_glm_gamma_diagnostics.svg'), 
+       plot = diagnostic_plots, 
+       width = 10, height = 10, units = "in",dpi = 600)
+```
+
+
+```{r Sub}
+input <- 'Subtropical'
+df <-model_TP_df[model_TP_df$bioregion == input,][,c('log_TP','TP','Natural_5_qt',  'Cropland_500_qt', 'Urban_500_qt',  'Depth.t','Area.t', 
+                                                     'Pastures.and.open.nature_500_qt', 'Aquatic_500_qt','Animals_cont.t', 'bio1.t')]
+dim(df)
+corrplot(cor(df),type='upper', order = "alphabet",tl.col = "black", tl.srt = 45)
+round(cor(df),2)
+
+```
+
+```{r}
+TP_subp_linear_model <- glm(TP ~ Natural_5_qt+Urban_500_qt + Animals_cont.t 
+                                + Urban_500_qt+Depth.t +Cropland_500_qt+Area.t+Aquatic_500_qt+bio1.t,
+                               data = df,family=Gamma(link='log'))
+summary(TP_subp_linear_model)
+stepAIC(TP_subp_linear_model)
+
+
+TP_subp_linear_model_selected <-  glm(formula = TP ~ Natural_5_qt + Urban_500_qt + Animals_cont.t + 
+    Area.t + Aquatic_500_qt + bio1.t, family = Gamma(link = "log"), 
+    data = df)
+summary(TP_subp_linear_model_selected)
+```
+
+```{r Plots for publication}
+#Sum tab
+tab_model(
+  TP_subp_linear_model_selected, 
+  show.intercept = TRUE, 
+  transform = NULL,file = paste0(outwdir, 'tp_sub_glm_gamma_sum.doc'))
+print(paste0(outwdir, 'tp_sub_glm_gamma_sum.doc'))
+#Predictors 
+plots <- visreg(TP_subp_linear_model_selected,gg=TRUE,scale='response',residuals=TRUE)
+combined_plot <- wrap_plots(plots)
+ggsave(filename = paste0(outwdir, 'tp_sub_glm_gamma_predictors.svg'), 
+       plot = combined_plot, 
+       width = 12, height = 10, units = "in", dpi = 600)
+
+#Diagnostic plots
+diagnostic_plots <- appraise(TP_subp_linear_model_selected)
+ggsave(filename = paste0(outwdir, 'tp_sub_glm_gamma_diagnostics.svg'), 
+       plot = diagnostic_plots, 
+       width = 10, height = 10, units = "in",dpi = 600)
+```
