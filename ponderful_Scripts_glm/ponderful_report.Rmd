@@ -36,10 +36,12 @@ phy_che[phy_che$Country == 'Spain',]$bioregion <- 'Mediterranean'
 phy_che[phy_che$Country == 'Turkey',]$bioregion <- 'Continental'
 phy_che[phy_che$Country == 'Uruguay',]$bioregion <- 'Subtropical'
 
-
 ##Factors and transformation 
 phy_che$Country <- as.factor(phy_che$Country)
 levels(phy_che$Country)
+
+
+
 
 ###log transformation TP 
 shapiro.test(phy_che$TP)
@@ -62,7 +64,7 @@ phy_che$log_TN <- log(phy_che$TN,base=10)
 hist(phy_che$log_TN)
 shapiro.test(phy_che$log_TN)
 
-full_df_standardized_TN <- phy_che %>%
+full_df_standardized <- phy_che %>%
   mutate(across(c(Natural_5_qt, Aquatic_500_qt, Cropland_500_qt, 
                   Forest_500_qt, Pastures.and.open.nature_500_qt, 
                   Urban_500_qt, Animals_cont.t, Area.t, Depth.t, 
@@ -72,30 +74,50 @@ full_df_standardized_TN <- phy_che %>%
                 ~ scale(.)[, 1])) # Standardizing each column
 
 
-model_TN_df <- full_df_standardized_TN[,c('log_TN','TN','Natural_5_qt', 'Aquatic_500_qt', 'Cropland_500_qt', 
+full_df_standardized_dist <- full_df_standardized[,c('TP','log_TP','log_TN','TN','Natural_5_qt', 'Aquatic_500_qt',
+                                                     'Cropland_500_qt', 'Natural_5',
+                                                     'Forest_500_qt', 'Pastures.and.open.nature_500_qt',
+                                                     'Urban_500_qt', 'Animals_cont.t', 'Area.t', 'Depth.t', 
+                                                     'bio1.t','bio4.t','bio5.t','bio6.t','bio7.t',
+                                                     'bio12.t','bio15.t','bio17.t','Country','bioregion','bio7')]
+full_df_standardized_dist <- na.omit(full_df_standardized_dist)
+dim(full_df_standardized_dist)
+
+# Check which columns contain NA values
+na_columns <- sapply(full_df_standardized_dist, function(x) any(is.na(x)))
+
+# Display the names of columns that contain NA values
+columns_with_na <- names(full_df_standardized_dist)[na_columns]
+columns_with_na
+
+
+hist(full_df_standardized_dist$TN,main='Distribution of Response Variable TN',xlab = 'TN')
+hist(full_df_standardized_dist$TP,main='Distribution of Response Variable TP',xlab = 'TP')
+test <- bestNormalize(phy_che$TN) #log10
+plot(test, leg_loc = "bottomright")
+
+
+
+model_TN_df <- full_df_standardized[,c('log_TN','TN','Natural_5_qt', 'Aquatic_500_qt', 'Cropland_500_qt', 
                                           'Forest_500_qt', 'Pastures.and.open.nature_500_qt', 
                                           'Urban_500_qt', 'Animals_cont.t', 'Area.t', 'Depth.t', 
                                           'bio1.t','bio4.t','bio5.t',
                                           'bio6.t','bio7.t',
                                           'bio12.t','bio15.t','bio17.t','Country','bioregion','bio7')]
 
+
 model_TN_df <-na.omit(model_TN_df)
 
-full_df_standardized_TP <- phy_che %>%
-  mutate(across(c(Natural_5_qt, Aquatic_500_qt, Cropland_500_qt, 
-                  Forest_500_qt, Pastures.and.open.nature_500_qt, 
-                  Urban_500_qt, Animals_cont.t, Area.t, Depth.t, 
-                  bio1.t,bio4.t,bio5.t,
-                  bio6.t,bio7.t,
-                  bio12.t,bio15.t,bio17.t), 
-                ~ scale(.)[, 1])) # Standardizing each column
 
-model_TP_df <- full_df_standardized_TP[,c('log_TP','TP','Natural_5_qt', 'Aquatic_500_qt', 'Cropland_500_qt', 
+model_TP_df <- full_df_standardized[,c('log_TP','TP','Natural_5_qt', 'Aquatic_500_qt', 'Cropland_500_qt', 
                                           'Forest_500_qt', 'Pastures.and.open.nature_500_qt', 
                                           'Urban_500_qt', 'Animals_cont.t', 'Area.t', 'Depth.t', 
                                           'bio1.t','bio4.t','bio5.t','bio6.t','bio7.t',
                                           'bio12.t','bio15.t','bio17.t','Country','bioregion')]
 model_TP_df<-na.omit(model_TP_df)
+
+
+
 ```
 
 ```{r TP Full corr}
@@ -790,7 +812,7 @@ corrplot(cor(df),order='alphabet',type='upper',tl.srt=45, tl.col='black')
 TP_glm_ctn_gamma <- glm(formula = TP ~ Natural_5_qt+Cropland_500_qt + +Urban_500_qt+ Depth.t+ 
     Forest_500_qt +bio7.t, family = Gamma(link = "log"), 
     data = df)
-
+na.omit(df)
 summary(TP_glm_ctn_gamma)
 
 stepAIC(TP_glm_ctn_gamma)
@@ -838,7 +860,7 @@ df <-full_df_standardized_TP[full_df_standardized_TP$bioregion == input,][,c('lo
                                                      'Aquatic_500_qt','Animals_cont.t', 'bio1.t')]
 plot(TP~Urban_500,df)
 
-hist(df$log_TP)
+table(df$log_TP)
 dim(df)
 descdist(df$TP,discrete=FALSE)
 corrplot(cor(df[c('log_TP','TP','Urban_500','Urban_500_qt')]),order='alphabet',type='upper',tl.srt=45, tl.col='black')
