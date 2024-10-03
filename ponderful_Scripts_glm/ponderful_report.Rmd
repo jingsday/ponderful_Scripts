@@ -4,7 +4,7 @@ ouTNut: html_document
 date: "2024-09-26"
 ---
 
-# Part I: Prep
+# Part I: Prep starting from full
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(include = FALSE)
@@ -37,8 +37,6 @@ phy_che[phy_che$Country == 'Uruguay',]$bioregion <- 'Subtropical'
 ##Factors and transformation 
 phy_che$Country <- as.factor(phy_che$Country)
 levels(phy_che$Country)
-
-
 
 
 ###log transformation TP 
@@ -184,6 +182,7 @@ ggsave(filename = paste0(outwdir, 'tp_all_glm_diagnostics.svg'),
        width = 10, height = 10, units = "in",dpi = 600)
 ```
 
+
 # Part II: Euro-Medi Modeling
 
 ```{r Euromedi corr}
@@ -319,7 +318,6 @@ TP_glm_euromedi_gamma_selected <- glm(formula = TP ~ Cropland_500_qt + Pastures.
                                         Animals_cont.t + Depth.t + bio1.t, family = Gamma(link = "log"), data = df)
 summary(TP_glm_euromedi_gamma_selected)
 
-
 ```
 
 ```{r Plots for publication}
@@ -342,6 +340,8 @@ ggsave(filename = paste0(outwdir, 'tp_euromedi_glm_gamma_diagnostics.svg'),
        plot = diagnostic_plots, 
        width = 10, height = 10, units = "in",dpi = 600)
 ```
+
+
 
 ```{r Euromedi GLM log_TP}
 TP_log_euromedi_linear_model <- glm(log_TP ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt +
@@ -377,7 +377,7 @@ df <-model_TN_df[model_TN_df$Country != input,][,c('log_TN','TN','Natural_5_qt',
                                                 'Depth.t','Forest_500_qt','Area.t','Pastures.and.open.nature_500_qt',
                                                 'Aquatic_500_qt','Animals_cont.t',
                                                 'bio1.t','bio7.t','bio5.t','bio12.t')]
-
+dim(df)
 #GAM gamma model
 TN_euromedi_gam_model_gamma <- gam(TN ~ s(Natural_5_qt) + s(Aquatic_500_qt) + 
                             s(Cropland_500_qt) + s(Forest_500_qt) + 
@@ -529,7 +529,99 @@ ggsave(filename = paste0(outwdir, 'TN_euromedi_glm_diagnostics.svg'),
        width = 10, height = 10, units = "in",dpi = 600)
 ```
 
-## Part III Temperate
+```{r TP Mixed }
+#bioregion as random effect gives marginal difference
+input <- 'Uruguay'
+df <-full_df_standardized[full_df_standardized$Country != input,][,c('Country','Pondscape','bioregion','TP','Natural_5_qt',  'Cropland_500_qt', 'Urban_500_qt',
+                                                'Depth.t','Forest_500_qt','Area.t','Pastures.and.open.nature_500_qt',
+                                                'Aquatic_500_qt','Animals_cont.t',
+                                                'bio1.t','bio7.t','bio5.t','bio12.t')]
+
+dim(df)
+df <-na.omit(df)
+dim(df)
+#selected vars from glm(also full model)
+tp_mixed_euromedi_linear_model <-glmer(formula = TP ~ Cropland_500_qt +
+                                         Pastures.and.open.nature_500_qt + (1|Country)+
+                                        Animals_cont.t + Depth.t + bio1.t, family = Gamma(link = "log"), data = df)
+tab_model(tp_mixed_euromedi_linear_model,file=paste0(outwdir,'tp_mixed_euromedi_linear_model.doc'))
+summary(tp_mixed_euromedi_linear_model)
+
+
+library(MuMIn)
+r.squaredGLMM(tp_mixed_euromedi_linear_model)
+drop1(tp_mixed_euromedi_linear_model, test = "Chisq")
+test<-glmer(formula = TP ~ Cropland_500_qt +
+                                         Pastures.and.open.nature_500_qt + (1|Country)+
+                                        Animals_cont.t + Depth.t , family = Gamma(link = "log"), data = df)
+test1 <-glmer(formula = TP ~
+                                         Pastures.and.open.nature_500_qt + (1|Country)+
+                                        Animals_cont.t + Depth.t+bio1.t , family = Gamma(link = "log"), data = df)
+test2<-glmer(formula = TP ~ Cropland_500_qt +
+                                          (1|Country)+
+                                        Animals_cont.t + Depth.t + bio1.t, family = Gamma(link = "log"), data = df)
+test3<-glmer(formula = TP ~ Cropland_500_qt +
+                                         Pastures.and.open.nature_500_qt + (1|Country)+
+                                       Depth.t + bio1.t, family = Gamma(link = "log"), data = df)
+
+test4<-glm(formula = TP ~ Cropland_500_qt +
+                                         Pastures.and.open.nature_500_qt +
+                                        Animals_cont.t + Depth.t + bio1.t, family = Gamma(link = "log"), data = df)
+
+test5 <-glmer(formula = TP ~ Cropland_500_qt +
+                                         Pastures.and.open.nature_500_qt + (1|Country)+
+                                        Animals_cont.t + bio1.t, family = Gamma(link = "log"), data = df)
+
+AIC(test5,tp_mixed_euromedi_linear_model)
+```
+
+```{r TN Mixed selected vars from glm}
+input <- 'Uruguay'
+
+df <-full_df_standardized[full_df_standardized$Country != input,][,c('Country','bioregion','Pondscape','log_TN','Natural_5_qt',  'Cropland_500_qt', 'Urban_500_qt',
+                                                'Depth.t','Forest_500_qt','Area.t','Pastures.and.open.nature_500_qt',
+                                                'Aquatic_500_qt','Animals_cont.t',
+                                                'bio1.t','bio7.t','bio5.t','bio12.t')]
+
+df <-na.omit(df)
+dim(df)
+
+#selected vars+Country|1
+TN_mixed_log_euromedi_linear_model <- lmer(formula = log_TN ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
+    Animals_cont.t + Area.t + Depth.t + bio7.t+(1|bioregion), data = df)
+
+
+TN_mixed_log_euromedi_linear_model <- lmer(formula = log_TN ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
+    Animals_cont.t + Area.t + Depth.t + bio7.t+(1|Country), data = df)
+
+summary(TN_mixed_log_euromedi_linear_model)
+tab_model(TN_mixed_log_euromedi_linear_model,file= paste0(outwdir, 'TN_mixed_log_euromedi_linear_model.doc'))
+
+test <- lmer(formula = log_TN ~ Cropland_500_qt +  Area.t + Depth.t +(1|Country), data = df)
+summary(test)
+tab_model(test)
+#all vars
+TN_mixed_log_euromedi_full <- lmer(log_TN ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt +
+                            Pastures.and.open.nature_500_qt +
+                             Urban_500_qt + Animals_cont.t + Area.t + Depth.t +
+                             bio1.t+bio7.t+(1|Country),
+                           data = df)
+summary(TN_mixed_log_euromedi_full)
+
+
+library(lmerTest)
+
+step(TN_mixed_log_euromedi_full)
+
+
+TN_mixed_log_euromedi_full_selected <- lmer(log_TN ~ Area.t + Depth.t + (1 | Country),data=df)
+summary(TN_mixed_log_euromedi_full_selected)
+
+tab_model(TN_mixed_log_euromedi_full_selected,file= paste0(outwdir, 'TN_mixed_log_euromedi_full_selected.doc'))
+```
+
+
+# Part III Temperate
 
 ```{r Temperate corr}
 input<- 'Temperate'#Temperate, Mediterranean, Continental, Subtropical
@@ -552,7 +644,6 @@ TP_gam_temp <- gam(TP ~ s(Natural_5_qt) + s(Aquatic_500_qt) +
                      s(Animals_cont.t,k=4) + s(Depth.t)+s(bio1.t),  
                    data = df, family = Gamma(link = "log"))
 summary(TP_gam_temp)
-
 TP_gam_temp_remove <- gam(TP ~ 
                             s(Cropland_500_qt) +
                             s(Pastures.and.open.nature_500_qt) + s(Urban_500_qt) +
@@ -1107,24 +1198,25 @@ tab_model(TN_log_range_linear_model_selected)
 AIC(TN_log_range_linear_model_selected,TN_range_linear_model_selected)
 
 ```
+
 ```{r Plots for publication}
 #Sum tab
 tab_model(
   TP_range_linear_model_selected, 
   show.intercept = TRUE, 
-  transform = NULL)#,file = paste0(outwdir, 'tp_range_glm_gamma_sum.doc'))
+  transform = NULL,file = paste0(outwdir, 'tp_range_glm_gamma_sum.doc'))
 
 #Predictors 
 plots <- visreg(TP_range_linear_model_selected,gg=TRUE,scale='response',residuals=TRUE)
 combined_plot <- wrap_plots(plots)
 combined_plot
-ggsave(filename = paste0(outwdir, 'tp_range_glm_gamma_predictors.eps'), 
+ggsave(filename = paste0(outwdir, 'tp_range_glm_gamma_predictors.png'), 
        plot = combined_plot, 
        width = 12, height = 10, units = "in", dpi = 600)
 
 #Diagnostic plots
 diagnostic_plots <- appraise(TP_range_linear_model_selected)
-ggsave(filename = paste0(outwdir, 'tp_range_glm_gamma_diagnostics.eps'), 
+ggsave(filename = paste0(outwdir, 'tp_range_glm_gamma_diagnostics.png'), 
        plot = diagnostic_plots, 
        width = 10, height = 10, units = "in",dpi = 600)
 
@@ -1132,22 +1224,21 @@ ggsave(filename = paste0(outwdir, 'tp_range_glm_gamma_diagnostics.eps'),
 tab_model(
   TN_range_linear_model_selected, 
   show.intercept = TRUE, 
-  transform = NULL)#,file = paste0(outwdir, 'TN_range_glm_gamma_sum.doc'))
+  transform = NULL,file = paste0(outwdir, 'TN_range_glm_gamma_sum.doc'))
 
 #Predictors 
 plots <- visreg(TN_range_linear_model_selected,gg=TRUE,scale='response',residuals=TRUE)
 combined_plot <- wrap_plots(plots)
 combined_plot
-ggsave(filename = paste0(outwdir, 'TN_range_glm_gamma_predictors.eps'), 
+ggsave(filename = paste0(outwdir, 'TN_range_glm_gamma_predictors.png'), 
        plot = combined_plot, 
        width = 12, height = 10, units = "in", dpi = 600)
 
 #Diagnostic plots
 diagnostic_plots <- appraise(TN_range_linear_model_selected)
-ggsave(filename = paste0(outwdir, 'TN_range_glm_gamma_diagnostics.eps'), 
+ggsave(filename = paste0(outwdir, 'TN_range_glm_gamma_diagnostics.png'), 
        plot = diagnostic_plots, 
        width = 10, height = 10, units = "in",dpi = 600)
-
 
 
 #TN LOG
@@ -1155,19 +1246,19 @@ ggsave(filename = paste0(outwdir, 'TN_range_glm_gamma_diagnostics.eps'),
 tab_model(
   TN_log_range_linear_model_selected, 
   show.intercept = TRUE, 
-  transform = NULL)#,file = paste0(outwdir, 'TN_LOG_range_glm_gamma_sum.doc'))
+  transform = NULL,file = paste0(outwdir, 'TN_LOG_range_glm_gamma_sum.doc'))
 
 #Predictors 
 plots <- visreg(TN_log_range_linear_model_selected,gg=TRUE,scale='response',residuals=TRUE)
 combined_plot <- wrap_plots(plots)
 combined_plot
-ggsave(filename = paste0(outwdir, 'TN_LOG_range_glm_gamma_predictors.eps'), 
+ggsave(filename = paste0(outwdir, 'TN_LOG_range_glm_gamma_predictors.png'), 
        plot = combined_plot, 
        width = 12, height = 10, units = "in", dpi = 600)
 
 #Diagnostic plots
 diagnostic_plots <- appraise(TN_log_range_linear_model_selected)
-ggsave(filename = paste0(outwdir, 'TN_LOG_range_glm_gamma_diagnostics.eps'), 
+ggsave(filename = paste0(outwdir, 'TN_LOG_range_glm_gamma_diagnostics.png'), 
        plot = diagnostic_plots, 
        width = 10, height = 10, units = "in",dpi = 600)
 ```
