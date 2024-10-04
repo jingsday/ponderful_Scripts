@@ -573,6 +573,11 @@ test5 <-glmer(formula = TP ~ Cropland_500_qt +
                                         Animals_cont.t + bio1.t, family = Gamma(link = "log"), data = df)
 
 AIC(test5,tp_mixed_euromedi_linear_model)
+
+model <- glmer(TP ~ Cropland_500_qt+ bio1.t + Pastures.and.open.nature_500_qt +
+                 Animals_cont.t + Depth.t + (1 + Cropland_500_qt | Country),  data = df,  family = Gamma(link = "log"))
+summary(model)
+tab_model(model)
 ```
 
 ```{r TN Mixed selected vars from glm}
