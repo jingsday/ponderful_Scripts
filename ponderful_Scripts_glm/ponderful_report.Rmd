@@ -578,6 +578,7 @@ model <- glmer(TP ~ Cropland_500_qt+ bio1.t + Pastures.and.open.nature_500_qt +
                  Animals_cont.t + Depth.t + (1 + Cropland_500_qt | Country),  data = df,  family = Gamma(link = "log"))
 summary(model)
 tab_model(model)
+AIC(model,TP_euromedi_gam_model_gamma_selected)
 ```
 
 ```{r TN Mixed selected vars from glm}
@@ -600,7 +601,11 @@ TN_mixed_log_euromedi_linear_model <- lmer(formula = log_TN ~ Cropland_500_qt + 
     Animals_cont.t + Area.t + Depth.t + bio7.t+(1|Country), data = df)
 
 summary(TN_mixed_log_euromedi_linear_model)
-tab_model(TN_mixed_log_euromedi_linear_model,file= paste0(outwdir, 'TN_mixed_log_euromedi_linear_model.doc'))
+tab_model(TN_mixed_log_euromedi_linear_model)#,file= paste0(outwdir, 'TN_mixed_log_euromedi_linear_model.doc'))
+
+test <- lmer(formula = log_TN ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
+    Animals_cont.t + Area.t + Depth.t + bio7.t+(1+ bioregion|Country), data = df)
+
 
 test <- lmer(formula = log_TN ~ Cropland_500_qt +  Area.t + Depth.t +(1|Country), data = df)
 summary(test)
@@ -623,6 +628,33 @@ TN_mixed_log_euromedi_full_selected <- lmer(log_TN ~ Area.t + Depth.t + (1 | Cou
 summary(TN_mixed_log_euromedi_full_selected)
 
 tab_model(TN_mixed_log_euromedi_full_selected,file= paste0(outwdir, 'TN_mixed_log_euromedi_full_selected.doc'))
+```
+```{r 04/10/2024 afternoon}
+model2 <- lmer(log_TN ~ Cropland_500_qt + Pastures.and.open.nature_500_qt +
+                  Animals_cont.t + Area.t+ Depth.t + bio7.t+ (1 + 1| Country),  data = df )
+summary(model2)
+random_intercepts <- ranef(model2)$Country
+random_intercepts_df <- as.data.frame(random_intercepts)
+random_intercepts_df$Country <- rownames(random_intercepts_df)
+colnames(random_intercepts_df)[1] <- "Intercept"
+
+png("TN_Country_intercepts.png", height = 7, width = 5, units = "in", res = 300)
+ggplot(random_intercepts_df, aes(x = reorder(Country, Intercept), y = Intercept)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +
+  labs(x = "Country", y = "Random Intercept (Difference from Overall Intercept)",
+       title = "Differences in Country Intercepts") +
+  theme_minimal() +
+  theme(
+    axis.title.x = element_text(size = 16),
+    axis.title.y = element_text(size = 16),
+    axis.text.x = element_text(size = 14),
+    axis.text.y = element_text(size = 14),
+    plot.title = element_text(size = 18, face = "bold"),
+    legend.title = element_text(size = 14),
+    legend.text = element_text(size = 12)
+  )
+dev.off() 
 ```
 
 
