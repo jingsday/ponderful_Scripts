@@ -542,9 +542,9 @@ df <-na.omit(df)
 dim(df)
 #selected vars from glm(also full model)
 tp_mixed_euromedi_linear_model <-glmer(formula = TP ~ Cropland_500_qt +
-                                         Pastures.and.open.nature_500_qt + (1|Country)+
+                                         Pastures.and.open.nature_500_qt + (1|Country) + (1 | Country:Pondscape)+
                                         Animals_cont.t + Depth.t + bio1.t, family = Gamma(link = "log"), data = df)
-tab_model(tp_mixed_euromedi_linear_model,file=paste0(outwdir,'tp_mixed_euromedi_linear_model.doc'))
+tab_model(tp_mixed_euromedi_linear_model,file=paste0(outwdir,'tp_mixed_euromedi_nested_model.doc'))
 summary(tp_mixed_euromedi_linear_model)
 
 
@@ -575,7 +575,7 @@ test5 <-glmer(formula = TP ~ Cropland_500_qt +
 AIC(test5,tp_mixed_euromedi_linear_model)
 
 model <- glmer(TP ~ Cropland_500_qt+ bio1.t + Pastures.and.open.nature_500_qt +
-                 Animals_cont.t + Depth.t + (1 + Cropland_500_qt | Country),  data = df,  family = Gamma(link = "log"))
+                 Animals_cont.t + Depth.t + (1 | Pondscape),  data = df,  family = Gamma(link = "log"))
 summary(model)
 tab_model(model)
 AIC(model,TP_euromedi_gam_model_gamma_selected)
@@ -603,6 +603,7 @@ TN_mixed_log_euromedi_linear_model <- lmer(formula = log_TN ~ Cropland_500_qt + 
 summary(TN_mixed_log_euromedi_linear_model)
 tab_model(TN_mixed_log_euromedi_linear_model)#,file= paste0(outwdir, 'TN_mixed_log_euromedi_linear_model.doc'))
 
+
 test <- lmer(formula = log_TN ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
     Animals_cont.t + Area.t + Depth.t + bio7.t+(1+ bioregion|Country), data = df)
 
@@ -628,7 +629,34 @@ TN_mixed_log_euromedi_full_selected <- lmer(log_TN ~ Area.t + Depth.t + (1 | Cou
 summary(TN_mixed_log_euromedi_full_selected)
 
 tab_model(TN_mixed_log_euromedi_full_selected,file= paste0(outwdir, 'TN_mixed_log_euromedi_full_selected.doc'))
+
+
+#nested pondscape
+TN_mixed_log_euromedi_nested_model <- lmer(formula = log_TN ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
+    Animals_cont.t + Area.t + Depth.t + bio7.t+(1|Country) + (1 | Country:Pondscape), data = df)
+
+tab_model(TN_mixed_log_euromedi_nested_model)
+tab_model(TN_mixed_log_euromedi_nested_model, file=paste0(outwdir,'TN_mixed_log_euromedi_nested_model.doc'))
+
+
+TN_mixed_log_euromedi_nested_model_full <- lmer(log_TN ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt +
+                            Pastures.and.open.nature_500_qt +
+                             Urban_500_qt + Animals_cont.t + Area.t + Depth.t +
+                             bio1.t+bio7.t+(1|Country) + (1 | Country:Pondscape),
+                           data = df)
+summary(TN_mixed_log_euromedi_nested_model_full)
+
+
+step(TN_mixed_log_euromedi_nested_model_full)
+
+
+TN_mixed_log_euromedi_nested_model_selected <- lmer(log_TN ~ Depth.t + (1 | Country:Pondscape),data=df)
+summary(TN_mixed_log_euromedi_nested_model_selected)
+tab_model(TN_mixed_log_euromedi_nested_model_selected, file=paste0(outwdir,'TN_mixed_log_euromedi_nested_model_selected.doc'))
 ```
+
+
+
 ```{r 04/10/2024 afternoon}
 model2 <- lmer(log_TN ~ Cropland_500_qt + Pastures.and.open.nature_500_qt +
                   Animals_cont.t + Area.t+ Depth.t + bio7.t+ (1 + 1| Country),  data = df )
@@ -638,7 +666,7 @@ random_intercepts_df <- as.data.frame(random_intercepts)
 random_intercepts_df$Country <- rownames(random_intercepts_df)
 colnames(random_intercepts_df)[1] <- "Intercept"
 
-png("TN_Country_intercepts.png", height = 7, width = 5, units = "in", res = 300)
+png(paste0(outwdir,"TN_Country_intercepts.png"), height = 7, width = 5, units = "in", res = 300)
 ggplot(random_intercepts_df, aes(x = reorder(Country, Intercept), y = Intercept)) +
   geom_bar(stat = "identity", fill = "steelblue") +
   coord_flip() +
