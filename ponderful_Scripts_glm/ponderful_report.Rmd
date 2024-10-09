@@ -579,6 +579,25 @@ model <- glmer(TP ~ Cropland_500_qt+ bio1.t + Pastures.and.open.nature_500_qt +
 summary(model)
 tab_model(model)
 AIC(model,TP_euromedi_gam_model_gamma_selected)
+
+#nested 
+tp_mixed_euromedi_linear_model <-glmer(formula = TP ~ Cropland_500_qt +
+                                         Pastures.and.open.nature_500_qt + (1|Country) + (1 | Country:Pondscape)+
+                                        Animals_cont.t + Depth.t + bio1.t, family = Gamma(link = "log"), data = df)
+tab_model(tp_mixed_euromedi_linear_model)#,file=paste0(outwdir,'tp_mixed_euromedi_nested_model.doc'))
+summary(tp_mixed_euromedi_linear_model)
+
+AIC(tp_mixed_euromedi_linear_model)
+test1 <- glmer(formula = TP ~ Pastures.and.open.nature_500_qt + (1|Country) + (1 | Country:Pondscape)+Animals_cont.t + Depth.t + bio1.t, family = Gamma(link = "log"), data = df)
+
+
+test2 <- glmer(formula = TP ~
+                                          (1|Country) + (1 | Country:Pondscape)+
+                                        Animals_cont.t + Depth.t , family = Gamma(link = "log"), data = df)
+summary(test2)
+AIC(test2)
+tab_model(test2,file=paste0(outwdir,'tp_mixed_euromedi_nested_model_AIC_selected.doc'))
+
 ```
 
 ```{r TN Mixed selected vars from glm}
@@ -999,7 +1018,7 @@ ggsave(filename = paste0(outwdir, 'tp_ctn_glm_gamma_diagnostics.svg'),
 ```{r Medi corr}
 input <- 'Mediterranean'
 colnames(model_TP_df)
-df <-full_df_standardized_TP[full_df_standardized_TP$bioregion == input,][,c('log_TP','TP',
+df <-full_df_standardized[full_df_standardized$bioregion == input,][,c('log_TP','TP',
                                                      'Natural_5', 
                                                      'Cropland_500', 'Urban_500',  'Depth','Area',
                                                      'Pastures.and.open.nature_500',
@@ -1032,6 +1051,19 @@ stepAIC(TP_medi_linear_model)
 TP_medi_linear_model_selected <-glm(formula = TP ~ Natural_5_qt + Cropland_500_qt + Urban_500_qt + 
     Animals_cont.t + Area.t + bio1.t, family = Gamma(link = "log"), 
     data = df)
+
+df <-na.omit(df)
+cvfit<-cv.glm(df,TP_medi_linear_model_selected,K=6)
+print(cvfit$delta)
+
+plot.new()
+plot(cvfit$delta, type = "b", pch = 19, col = "blue",
+     xlab = "Cross-Validation Type", ylab = "CV Error",
+     main = "Cross-Validation Error Estimates")
+abline(h = mean(cvfit$delta), col = "red", lty = 2)  # Optional: add a horizontal line for mean error
+
+
+
 tab_model(TP_medi_linear_model_selected)
 summary(TP_medi_linear_model_selected)
 
@@ -1420,4 +1452,454 @@ summary(TN_gam_range_model_LUlinear_remove)
 plot(TN_gam_range_model_LUlinear_remove,shade=TRUE,residuals = TRUE,rug=TRUE,all.terms = TRUE)
 ```
 
+#Part VII: TP models in countries
 
+```{r Spain }
+input <- 'Spain'
+df <-full_df_standardized[full_df_standardized$Country == input,][,c('log_TP','TP',
+                                                     'Natural_5', 
+                                                     'Cropland_500', 'Urban_500',  'Depth','Area',
+                                                     'Pastures.and.open.nature_500',
+                                                     'Aquatic_500','Animals_cont', 'bio1',
+                                                     'Natural_5_qt', 
+                                                     'Cropland_500_qt', 'Urban_500_qt',  'Depth.t','Area.t',
+                                                     'Pastures.and.open.nature_500_qt',
+                                                     'Aquatic_500_qt','Animals_cont.t', 'bio1.t')]
+dim(df)
+plot(TP~Urban_500,df)
+
+descdist(df$TP,discrete=FALSE)
+
+corrplot(cor(df[c('TP','Cropland_500_qt', 'Pastures.and.open.nature_500_qt' , 'Animals_cont.t' ,'Depth.t' , 'bio1.t')]),order='alphabet',type='upper',tl.srt=45, tl.col='black')
+
+round(cor(df[c('Cropland_500_qt', 'Pastures.and.open.nature_500_qt' , 'Animals_cont.t' ,'Depth.t' , 'bio1.t')]),2)
+round(cor(df),2)
+corrplot(cor(df),type='upper',order='alphabet',tl.srt=45,tl.col ='black',)
+
+#Model glm gamma
+TP_glm_spain_gamma <- glm(formula = TP ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
+    Animals_cont.t + Depth.t + bio1.t, family = Gamma(link = "log"), 
+    data = df)
+
+summary(TP_glm_spain_gamma)
+tab_model(TP_glm_spain_gamma)
+tab_model(
+  TP_glm_spain_gamma, 
+  show.intercept = TRUE, 
+  transform = NULL)
+test <- glm(formula = TP ~ Cropland_500_qt  + 
+    Animals_cont.t + Depth.t + bio1.t, family = Gamma(link = "log"), 
+    data = df)
+tab_model(test)
+test1 <- glm(formula = TP ~ Cropland_500_qt  + 
+    Animals_cont.t + Depth.t + bio1.t, family = Gamma(link = "log"), 
+    data = df)
+tab_model(test)
+
+
+TP_glm_spain_gamma_selected <- glm(formula = TP ~ Cropland_500_qt  + Depth.t , family = Gamma(link = "log"), 
+    data = df)
+tab_model(TP_glm_spain_gamma_selected)
+
+tab_model(test)
+print(AIC(test1,test))
+summary(test)
+test_selected <-  glm(formula = log_TP ~ Cropland_500_qt + Animals_cont.t + Depth.t + bio1.t, data = df)
+tab_model(test_selected)
+summary(test_selected)
+step(test)
+#output
+
+#Sum table
+tab_model(TP_glm_spain_gamma,
+          file = paste0(outwdir, 'tp_spain_gam_sum.doc'))
+
+#Predictors
+plots <- visreg(TP_glm_spain_gamma,gg=TRUE)
+combined_plot <- wrap_plots(plots)
+combined_plot
+ggsave(filename = paste0(outwdir, 'tp_spain_gam_predictors_full.svg'), 
+       plot = combined_plot, 
+       width = 12, height = 10, units = "in", dpi = 600)
+
+#Diagnostic plots
+diagnostic_plots <- appraise(TP_glm_spain_gamma)
+ggsave(file = paste0(outwdir, 'tp_spain_gam_diagnostics.svg'), 
+       plot = diagnostic_plots, 
+       width = 10, height = 10, units = "in",dpi = 600)
+```
+
+```{r Germany}
+input <- 'Germany'
+df <-full_df_standardized[full_df_standardized$Country == input,][,c('log_TP','TP',
+                                                     'Natural_5', 
+                                                     'Cropland_500', 'Urban_500',  'Depth','Area',
+                                                     'Pastures.and.open.nature_500',
+                                                     'Aquatic_500','Animals_cont', 'bio1',
+                                                     'Natural_5_qt', 
+                                                     'Cropland_500_qt', 'Urban_500_qt',  'Depth.t','Area.t',
+                                                     'Pastures.and.open.nature_500_qt',
+                                                     'Aquatic_500_qt','Animals_cont.t', 'bio1.t')]
+dim(df)
+plot(TP~Urban_500,df)
+
+descdist(df$TP,discrete=FALSE)
+
+corrplot(cor(df[c('Cropland_500_qt', 'Pastures.and.open.nature_500_qt' , 'Animals_cont.t' ,'Depth.t' , 'bio1.t')]),order='alphabet',type='upper',tl.srt=45, tl.col='black')
+
+round(cor(df[c('Cropland_500_qt', 'Pastures.and.open.nature_500_qt' , 'Animals_cont.t' ,'Depth.t' , 'bio1.t')]),2)
+round(cor(df[c('Cropland_500_qt', 'Pastures.and.open.nature_500_qt' , 'Animals_cont.t' ,'Depth.t' , 'bio1.t')]),2)
+corrplot(cor(df),type='upper',order='alphabet',tl.srt=45,tl.col ='black',)
+
+#Model glm gamma
+TP_glm_germany_gamma <- glm(formula = TP ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
+    Animals_cont.t + Depth.t + bio1.t, family = Gamma(link = "log"), 
+    data = df)
+tab_model(TP_glm_germany_gamma)
+summary(TP_glm_germany_gamma)
+test <- glm(formula = TP ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
+     Depth.t + bio1.t, family = Gamma(link = "log"), 
+    data = df)
+AIC(TP_glm_germany_gamma,test)
+tab_model(test)
+
+test1 <- glm(formula = TP ~ Cropland_500_qt + 
+     Depth.t + bio1.t, family = Gamma(link = "log"), 
+    data = df)
+AIC(test1,test2)
+tab_model(test2)
+
+test2 <- glm(formula = TP ~ Cropland_500_qt + 
+     Depth.t , family = Gamma(link = "log"), 
+    data = df)
+
+
+test <-  glm(formula = log_TP ~ Cropland_500_qt + Pastures.and.open.nature_500_qt +
+    Animals_cont.t + Depth.t + bio1.t,
+    data = df)
+tab_model(test2)
+step(test)
+test_selected<-  glm(formula = log_TP ~ Cropland_500_qt + Animals_cont.t + Depth.t + 
+    bio1.t, data = df)
+tab_model(test_selected)
+
+#output
+tab_model(TP_glm_spain_gamma,
+          file = paste0(outwdir, 'tp_spain_gam_sum.doc'))
+
+#Predictors
+plots <- visreg(TP_glm_spain_gamma,gg=TRUE)
+combined_plot <- wrap_plots(plots)
+combined_plot
+ggsave(filename = paste0(outwdir, 'tp_spain_gam_predictors_full.svg'), 
+       plot = combined_plot, 
+       width = 12, height = 10, units = "in", dpi = 600)
+
+#Diagnostic plots
+diagnostic_plots <- appraise(TP_glm_spain_gamma)
+ggsave(file = paste0(outwdir, 'tp_spain_gam_diagnostics.svg'), 
+       plot = diagnostic_plots, 
+       width = 10, height = 10, units = "in",dpi = 600)
+```
+
+```{r Denmark}
+input <- 'Denmark'
+df <-full_df_standardized[full_df_standardized$Country == input,][,c('log_TP','TP',
+                                                     'Natural_5', 
+                                                     'Cropland_500', 'Urban_500',  'Depth','Area',
+                                                     'Pastures.and.open.nature_500',
+                                                     'Aquatic_500','Animals_cont', 'bio1',
+                                                     'Natural_5_qt', 
+                                                     'Cropland_500_qt', 'Urban_500_qt',  'Depth.t','Area.t',
+                                                     'Pastures.and.open.nature_500_qt',
+                                                     'Aquatic_500_qt','Animals_cont.t', 'bio1.t')]
+dim(df)
+plot(TP~Urban_500,df)
+
+descdist(df$TP,discrete=FALSE)
+
+corrplot(cor(df[c('Cropland_500_qt', 'Pastures.and.open.nature_500_qt' , 'Animals_cont.t' ,'Depth.t' , 'bio1.t')]),order='alphabet',type='upper',tl.srt=45, tl.col='black')
+
+round(cor(df[c('Cropland_500_qt', 'Pastures.and.open.nature_500_qt' , 'Animals_cont.t' ,'Depth.t' , 'bio1.t')]),2)
+#Depth.t ~bio1.t 0.54
+corrplot(cor(df),type='upper',order='alphabet',tl.srt=45,tl.col ='black',)
+
+#Model glm gamma
+TP_glm_denmark_gamma <- glm(formula = TP ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
+    Animals_cont.t + Depth.t + bio1.t, family = Gamma(link = "log"), 
+    data = df)
+tab_model(TP_glm_denmark_gamma)
+summary(TP_glm_denmark_gamma)
+test <- glm(formula = TP ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
+     Depth.t + bio1.t, family = Gamma(link = "log"), 
+    data = df)
+AIC(TP_glm_denmark_gamma,test)
+
+tab_model(test)
+
+test1 <- glm(formula = TP ~ Cropland_500_qt + 
+     Depth.t + bio1.t, family = Gamma(link = "log"), 
+    data = df)
+AIC(test1,test)
+tab_model(test2)
+
+TP_glm_denmark_gamma_selected <- glm(formula = TP ~ Cropland_500_qt + 
+                                       Depth.t , family = Gamma(link = "log"), data = df)
+
+
+test <-  glm(formula = log_TP ~ Cropland_500_qt + Pastures.and.open.nature_500_qt +
+    Animals_cont.t + Depth.t + bio1.t,
+    data = df)
+tab_model(test)
+step(test)
+test_selected<-   glm(formula = log_TP ~ bio1.t, data = df)
+tab_model(test_selected)
+
+#OUTPUT
+tab_model(TP_glm_denmark_gamma_selected,
+          file = paste0(outwdir, 'tp_denmark_gam_sum.doc'))
+
+#Predictors
+plots <- visreg(TP_glm_denmark_gamma_selected,gg=TRUE)
+combined_plot <- wrap_plots(plots)
+combined_plot
+ggsave(filename = paste0(outwdir, 'tp_denmark_gam_predictors_full.svg'), 
+       plot = combined_plot, 
+       width = 12, height = 10, units = "in", dpi = 600)
+
+#Diagnostic plots
+diagnostic_plots <- appraise(TP_glm_denmark_gamma_selected)
+ggsave(file = paste0(outwdir, 'tp_denmark_gam_diagnostics.svg'), 
+       plot = diagnostic_plots, 
+       width = 10, height = 10, units = "in",dpi = 600)
+```
+
+
+
+```{r Turkey}
+input <- 'Turkey'
+df <-full_df_standardized[full_df_standardized$Country == input,][,c('log_TP','TP',
+                                                     'Natural_5', 
+                                                     'Cropland_500', 'Urban_500',  'Depth','Area',
+                                                     'Pastures.and.open.nature_500',
+                                                     'Aquatic_500','Animals_cont', 'bio1',
+                                                     'Natural_5_qt', 
+                                                     'Cropland_500_qt', 'Urban_500_qt',  'Depth.t','Area.t',
+                                                     'Pastures.and.open.nature_500_qt',
+                                                     'Aquatic_500_qt','Animals_cont.t', 'bio1.t')]
+dim(df)
+plot(TP~Urban_500,df)
+
+descdist(df$TP,discrete=FALSE)
+
+corrplot(cor(df[c('TP','Cropland_500_qt', 'Pastures.and.open.nature_500_qt' , 'Animals_cont.t' ,'Depth.t' , 'bio1.t')]),order='alphabet',type='upper',tl.srt=45, tl.col='black')
+
+round(cor(df[c('Cropland_500_qt', 'Pastures.and.open.nature_500_qt' , 'Animals_cont.t' ,'Depth.t' , 'bio1.t')]),2)
+round(cor(df),2)
+corrplot(cor(df),type='upper',order='alphabet',tl.srt=45,tl.col ='black',)
+
+#Model glm gamma
+TP_glm_spain_gamma <- glm(formula = TP ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
+    Animals_cont.t + Depth.t + bio1.t, family = Gamma(link = "log"), 
+    data = df)
+
+summary(TP_glm_spain_gamma)
+tab_model(TP_glm_spain_gamma)
+tab_model(
+  TP_glm_spain_gamma, 
+  show.intercept = TRUE, 
+  transform = NULL)
+test <- glm(formula = TP ~ Cropland_500_qt  + 
+    Animals_cont.t + Depth.t + bio1.t, family = Gamma(link = "log"), 
+    data = df)
+tab_model(test)
+test1 <- glm(formula = TP ~ Cropland_500_qt  + 
+    Animals_cont.t + Depth.t + bio1.t, family = Gamma(link = "log"), 
+    data = df)
+tab_model(test)
+
+
+TP_glm_spain_gamma_selected <- glm(formula = TP ~ Cropland_500_qt  + Depth.t , family = Gamma(link = "log"), 
+    data = df)
+tab_model(TP_glm_spain_gamma_selected)
+
+tab_model(test)
+print(AIC(test1,test))
+summary(test)
+test_selected <-  glm(formula = log_TP ~ Cropland_500_qt + Animals_cont.t + Depth.t + bio1.t, data = df)
+tab_model(test_selected)
+summary(test_selected)
+step(test)
+#output
+```
+
+```{r Uruguay}
+input <- 'Uruguay'
+df <-full_df_standardized[full_df_standardized$Country == input,][,c('log_TP','TP',
+                                                     'Natural_5', 
+                                                     'Cropland_500', 'Urban_500',  'Depth','Area',
+                                                     'Pastures.and.open.nature_500',
+                                                     'Aquatic_500','Animals_cont', 'bio1',
+                                                     'Natural_5_qt', 
+                                                     'Cropland_500_qt', 'Urban_500_qt',  'Depth.t','Area.t',
+                                                     'Pastures.and.open.nature_500_qt',
+                                                     'Aquatic_500_qt','Animals_cont.t', 'bio1.t')]
+dim(df)
+plot(TP~Urban_500,df)
+
+descdist(df$TP,discrete=FALSE)
+
+corrplot(cor(df[c('TP','Cropland_500_qt', 'Pastures.and.open.nature_500_qt' , 'Animals_cont.t' ,'Depth.t' , 'bio1.t')]),order='alphabet',type='upper',tl.srt=45, tl.col='black')
+
+round(cor(df[c('Cropland_500_qt', 'Pastures.and.open.nature_500_qt' , 'Animals_cont.t' ,'Depth.t' , 'bio1.t')]),2)
+round(cor(df),2)
+corrplot(cor(df),type='upper',order='alphabet',tl.srt=45,tl.col ='black',)
+
+#Model glm gamma
+TP_glm_uruguay_gamma <- glm(formula = TP ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
+    Animals_cont.t + Depth.t + bio1.t, family = Gamma(link = "log"), 
+    data = df)
+
+summary(TP_glm_uruguay_gamma)
+tab_model(TP_glm_uruguay_gamma)
+tab_model(
+  TP_glm_uruguay_gamma, 
+  show.intercept = TRUE, 
+  transform = NULL)
+test <- glm(formula = TP ~ Cropland_500_qt  + 
+    Animals_cont.t + Depth.t + bio1.t, family = Gamma(link = "log"), 
+    data = df)
+tab_model(test)
+test1 <- glm(formula = TP ~ Cropland_500_qt  + 
+    Animals_cont.t + Depth.t + bio1.t, family = Gamma(link = "log"), 
+    data = df)
+tab_model(test)
+
+
+TP_glm_spain_gamma_selected <- glm(formula = TP ~ Cropland_500_qt  + Depth.t , family = Gamma(link = "log"), 
+    data = df)
+tab_model(TP_glm_spain_gamma_selected)
+
+tab_model(test)
+print(AIC(test1,test))
+summary(test)
+test_selected <-  glm(formula = log_TP ~ Cropland_500_qt + Animals_cont.t + Depth.t + bio1.t, data = df)
+tab_model(test_selected)
+summary(test_selected)
+step(test)
+#output
+```
+
+```{r UK}
+input <- 'UK'
+df <-full_df_standardized[full_df_standardized$Country == input,][,c('log_TP','TP',
+                                                     'Natural_5', 
+                                                     'Cropland_500', 'Urban_500',  'Depth','Area',
+                                                     'Pastures.and.open.nature_500',
+                                                     'Aquatic_500','Animals_cont', 'bio1',
+                                                     'Natural_5_qt', 
+                                                     'Cropland_500_qt', 'Urban_500_qt',  'Depth.t','Area.t',
+                                                     'Pastures.and.open.nature_500_qt',
+                                                     'Aquatic_500_qt','Animals_cont.t', 'bio1.t')]
+dim(df)
+plot(TP~Urban_500,df)
+
+descdist(df$TP,discrete=FALSE)
+
+corrplot(cor(df[c('TP','Cropland_500_qt', 'Pastures.and.open.nature_500_qt' , 'Animals_cont.t' ,'Depth.t' , 'bio1.t')]),order='alphabet',type='upper',tl.srt=45, tl.col='black')
+
+round(cor(df[c('Cropland_500_qt', 'Pastures.and.open.nature_500_qt' , 'Animals_cont.t' ,'Depth.t' , 'bio1.t')]),2)
+round(cor(df),2)
+corrplot(cor(df),type='upper',order='alphabet',tl.srt=45,tl.col ='black',)
+
+#Model glm gamma
+TP_glm_uk_gamma <- glm(formula = TP ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
+    Animals_cont.t + Depth.t + bio1.t, family = Gamma(link = "log"), 
+    data = df)
+
+summary(TP_glm_uk_gamma)
+tab_model(TP_glm_uk_gamma)
+tab_model(
+  TP_glm_uk_gamma, 
+  show.intercept = TRUE, 
+  transform = NULL)
+test <- glm(formula = TP ~ Cropland_500_qt  + 
+    Animals_cont.t + Depth.t + bio1.t, family = Gamma(link = "log"), 
+    data = df)
+tab_model(test)
+test1 <- glm(formula = TP ~ Cropland_500_qt  + 
+    Animals_cont.t + Depth.t + bio1.t, family = Gamma(link = "log"), 
+    data = df)
+tab_model(test)
+
+
+TP_glm_spain_gamma_selected <- glm(formula = TP ~ Cropland_500_qt  + Depth.t , family = Gamma(link = "log"), 
+    data = df)
+tab_model(TP_glm_uk_gamma_selected)
+
+tab_model(test)
+print(AIC(test1,test))
+summary(test)
+test_selected <-  glm(formula = log_TP ~ Cropland_500_qt + Animals_cont.t + Depth.t + bio1.t, data = df)
+tab_model(test_selected)
+summary(test_selected)
+step(test)
+#output
+```
+
+```{r Belgium}
+input <- 'Belgium'
+df <-full_df_standardized[full_df_standardized$Country == input,][,c('log_TP','TP',
+                                                     'Natural_5', 
+                                                     'Cropland_500', 'Urban_500',  'Depth','Area',
+                                                     'Pastures.and.open.nature_500',
+                                                     'Aquatic_500','Animals_cont', 'bio1',
+                                                     'Natural_5_qt', 
+                                                     'Cropland_500_qt', 'Urban_500_qt',  'Depth.t','Area.t',
+                                                     'Pastures.and.open.nature_500_qt',
+                                                     'Aquatic_500_qt','Animals_cont.t', 'bio1.t')]
+dim(df)
+plot(TP~Urban_500,df)
+
+descdist(df$TP,discrete=FALSE)
+
+corrplot(cor(df[c('TP','Cropland_500_qt', 'Pastures.and.open.nature_500_qt' , 'Animals_cont.t' ,'Depth.t' , 'bio1.t')]),order='alphabet',type='upper',tl.srt=45, tl.col='black')
+
+round(cor(df[c('Cropland_500_qt', 'Pastures.and.open.nature_500_qt' , 'Animals_cont.t' ,'Depth.t' , 'bio1.t')]),2)
+round(cor(df),2)
+corrplot(cor(df),type='upper',order='alphabet',tl.srt=45,tl.col ='black',)
+
+#Model glm gamma
+TP_glm_belgium_gamma <- glm(formula = TP ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
+    Animals_cont.t + Depth.t + bio1.t, family = Gamma(link = "log"), 
+    data = df)
+
+summary(TP_glm_belgium_gamma)
+tab_model(TP_glm_belgium_gamma)
+tab_model(
+  TP_glm_belgium_gamma, 
+  show.intercept = TRUE, 
+  transform = NULL)
+test <- glm(formula = TP ~ Cropland_500_qt  + 
+    Animals_cont.t + Depth.t + bio1.t, family = Gamma(link = "log"), 
+    data = df)
+tab_model(test)
+test1 <- glm(formula = TP ~ Cropland_500_qt  + 
+    Animals_cont.t + Depth.t + bio1.t, family = Gamma(link = "log"), 
+    data = df)
+tab_model(test)
+
+
+TP_glm_spain_gamma_selected <- glm(formula = TP ~ Cropland_500_qt  + Depth.t , family = Gamma(link = "log"), 
+    data = df)
+tab_model(TP_glm_uk_gamma_selected)
+
+tab_model(test)
+print(AIC(test1,test))
+summary(test)
+test_selected <-  glm(formula = log_TP ~ Cropland_500_qt + Animals_cont.t + Depth.t + bio1.t, data = df)
+tab_model(test_selected)
+summary(test_selected)
+step(test)
+#output
+```
