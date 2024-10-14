@@ -1903,3 +1903,94 @@ summary(test_selected)
 step(test)
 #output
 ```
+
+```{r}
+# Load necessary library for tab_model
+library(sjPlot)
+
+# Define the function for backward stepwise model selection
+stepwise_selection <- function(data, full_formula, fam, lk, min_r2_ratio = 0.9) {
+  
+  #dataframe retrievel 
+  df <-full_df_standardized[full_df_standardized$Country == input,][,c('log_TP','TP',
+                                                     'Natural_5', 
+                                                     'Cropland_500', 'Urban_500',  'Depth','Area',
+                                                     'Pastures.and.open.nature_500',
+                                                     'Aquatic_500','Animals_cont', 'bio1',
+                                                     'Natural_5_qt', 
+                                                     'Cropland_500_qt', 'Urban_500_qt',  'Depth.t','Area.t',
+                                                     'Pastures.and.open.nature_500_qt',
+                                                     'Aquatic_500_qt','Animals_cont.t', 'bio1.t')]
+  #starting models
+  starting_model <- glm(formula = res_var ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
+    Animals_cont.t + Depth.t + bio1.t, family = fam(link = paste0(link)), 
+    data = df)
+  
+  starting_aic <- AIC(starting_model)
+  starting_r2 <- summary(starting_model)$r.squared
+  
+  cat("Starting Model AIC:", starting_aic, "\n")
+  cat("Starting Model R²:", starting_r2, "\n")
+  
+  # Initialize a list to store models and their stats
+  models <- list()
+  models[[1]] <- list(model = starting_model, aic = starting_aic, r2 = starting_r2)
+  
+  # Extract variables from the full formula
+  terms <- all.vars(full_formula)[-1]  # Exclude response variable
+  
+  # Function to calculate R²
+  calc_r2 <- function(model) {
+    1 - (sum(residuals(model)^2) / sum((model$y - mean(model$y))^2))
+  }
+  
+  # Backward selection loop
+  for (i in seq_along(terms)) {
+    
+    # Generate models by removing one variable at a time
+    for (j in 1:length(terms)) {
+      # Create new formula by excluding one variable
+      current_terms <- terms[-j]
+      current_formula <- as.formula(paste("res_var ~", paste(current_terms, collapse = " + ")))
+      
+      # Fit the new model
+      test_model <- glm(formula = current_formula, family = fam(link = link), data = data)
+      
+      # Calculate AIC and R²
+      test_aic <- AIC(test_model)
+      test_r2 <- calc_r2(test_model)
+      
+      # Compare AIC and R² to keep or discard the model
+      if (test_aic < starting_aic && test_r2 >= starting_r2 * min_r2_ratio) {
+        cat("\nBetter model found by removing", terms[j], "\n")
+        cat("New AIC:", test_aic, "New R²:", test_r2, "\n")
+        
+        models[[length(models) + 1]] <- list(model = test_model, aic = test_aic, r2 = test_r2)
+        
+        # Update starting values for next iteration
+        starting_aic <- test_aic
+        starting_r2 <- test_r2
+        
+        # Print summary and tab_model
+        print(summary(test_model))
+        tab_model(test_model)
+        
+        # Break out of the loop if a better model is found
+        break
+      }
+    }
+  }
+  
+  return(models)
+}
+
+# Example usage:
+# The full formula
+full_formula <- TP ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + Animals_cont.t + Depth.t + bio1.t
+
+# Run the stepwise selection
+best_models <- stepwise_selection(df, full_formula, fam = Gamma, link = "log")
+```
+
+
+

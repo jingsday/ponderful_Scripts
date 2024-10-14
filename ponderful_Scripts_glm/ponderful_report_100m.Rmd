@@ -1,0 +1,74 @@
+---
+title: "Ponderful 100m"
+author: "Jing"
+date: "2024-10-14"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(include = FALSE)
+library(dplyr)
+library(mgcv)
+library(ggplot2)
+library(nlme)
+library(fitdistrplus)
+library(bestNormalize)
+library(visreg)
+library(lmerTest)
+library(corrplot)
+library(sjPlot)
+library(gratia) 
+library(patchwork)
+```
+
+```{r 100m buffer general models}
+#df with transformed vars
+hundred_df <- read.csv('/Users/lidiayung/PhD_project/project_PONDERFUL/ponderful_OUTPUT/Phy_Che_oct_qt.csv')
+
+##Country as factors
+hundred_df$Country <- as.factor(hundred_df$Country)
+levels(hundred_df$Country)
+
+##Alternative categories
+## Bio climatic regions
+hundred_df$altregion <- 'Atlantic'
+
+hundred_df[hundred_df$Country == 'Spain' | hundred_df$Country == 'Turkey', "altregion"] <- 'Mediterranean'
+hundred_df[hundred_df$Country == 'Belgium' | hundred_df$Country == 'Germany', "altregion"] <- 'BelGE'
+hundred_df[hundred_df$Country == 'Uruguay',]$altregion <- 'Uruguay'
+hundred_df[hundred_df$Country == 'Switzerland',]$altregion <- 'Switzerland'
+
+##Factors and transformation 
+hundred_df$Country <- as.factor(hundred_df$Country)
+levels(hundred_df$Country)
+
+hundred_df$altregion <- as.factor(hundred_df$altregion)
+levels(hundred_df$altregion)
+
+hundred_df_standardized <- hundred_df %>%
+  mutate(across(c(Natural_5_qt,Arable_100_qt, Imp_grassland_100_qt, 
+                  Forest_100_qt, Pastures.and.open.nature_100_qt, 
+                  Animals_cont.t, Area.t, Depth.t, 
+                  bio1.t,bio4.t,bio5.t,
+                  bio6.t,bio7.t,
+                  bio12.t,bio15.t,bio17.t), 
+                ~ scale(.)[, 1]))
+
+
+##Corr plot
+
+```
+```{r}
+corrplot(cor(hundred_df_standardized[,c( 'Natural_5_qt','Arable_100_qt', 'Imp_grassland_100_qt',
+                                                'Depth.t','Forest_100_qt','Area.t','Pastures.and.open.nature_100_qt',
+                                                'Animals_cont.t',
+                            'bio1.t','bio7.t','bio5.t','bio12.t')]),
+         order='alphabet',type='upper',tl.col='black',tl.srt = 45,main='Full')
+```
+```{r}
+round(cor(hundred_df_standardized[,c(  'Arable_100_qt', 'Imp_grassland_100_qt',
+                                                'Depth.t','Forest_100_qt','Area.t','Pastures.and.open.nature_100_qt',
+                                                'Animals_cont.t',
+                            'bio1.t','bio7.t','bio5.t','bio12.t')]),2)
+```
+
