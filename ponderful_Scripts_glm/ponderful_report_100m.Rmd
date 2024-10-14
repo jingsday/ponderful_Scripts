@@ -21,6 +21,8 @@ library(gratia)
 library(patchwork)
 ```
 
+#Prep
+
 ```{r 100m buffer general models}
 #df with transformed vars
 hundred_df <- read.csv('/Users/lidiayung/PhD_project/project_PONDERFUL/ponderful_OUTPUT/Phy_Che_oct_qt.csv')
@@ -55,20 +57,200 @@ hundred_df_standardized <- hundred_df %>%
                 ~ scale(.)[, 1]))
 
 
-##Corr plot
+hundred_df_standardized$log_TN <- log(hundred_df_standardized$TN,base=10)
+hist(hundred_df_standardized$log_TN)
+shapiro.test(hundred_df_standardized$log_TN)
+
+# Check which columns contain NA values
+na_columns <- sapply(hundred_df_standardized, function(x) any(is.na(x)))
+
+# Display the names of columns that contain NA values
+columns_with_na <- names(hundred_df_standardized)[na_columns]
+columns_with_na
+
+
+hist(hundred_df_standardized$TN,main='Distribution of Response Variable TN(n=238)',xlab = 'TN')
+hist(hundred_df_standardized$TP,main='Distribution of Response Variable TP',xlab = 'TP')
 
 ```
-```{r}
-corrplot(cor(hundred_df_standardized[,c( 'Natural_5_qt','Arable_100_qt', 'Imp_grassland_100_qt',
+
+```{r model df}
+model_df <- hundred_df_standardized[,c('PondCode','log_TN','TN','TP','Natural_5_qt','Arable_100_qt','Imp_grassland_100_qt',
+                                          'Depth.t','Forest_100_qt','Area.t','Pastures.and.open.nature_100_qt','Arable_imp_grass_100_qt',
+                                        'Animals_cont.t','bio1.t','bio7.t','bio5.t','bio12.t','altregion','bio7','Fish','X','Y','Arable_100'
+                                          )]
+model_df<- na.omit(model_df)
+
+
+corrplot(cor(model_df[,c( 'Natural_5_qt','Arable_100_qt', 'Arable_100','Imp_grassland_100_qt','Arable_imp_grass_100_qt',
                                                 'Depth.t','Forest_100_qt','Area.t','Pastures.and.open.nature_100_qt',
-                                                'Animals_cont.t',
+                                                'Animals_cont.t','Fish',
                             'bio1.t','bio7.t','bio5.t','bio12.t')]),
          order='alphabet',type='upper',tl.col='black',tl.srt = 45,main='Full')
-```
-```{r}
-round(cor(hundred_df_standardized[,c(  'Arable_100_qt', 'Imp_grassland_100_qt',
+
+round(cor(model_df[,c( 'Natural_5_qt','Arable_100_qt', 'Arable_100','Imp_grassland_100_qt','Arable_imp_grass_100_qt',
                                                 'Depth.t','Forest_100_qt','Area.t','Pastures.and.open.nature_100_qt',
-                                                'Animals_cont.t',
+                                                'Animals_cont.t','Fish',
                             'bio1.t','bio7.t','bio5.t','bio12.t')]),2)
 ```
+```{r PCA}
+PCA_vars <- c('Arable_100_qt','Imp_grassland_100_qt','Forest_100_qt','Pastures.and.open.nature_100_qt')
+
+data_normalized <- model_df[,PCA_vars]
+
+data.pca <- princomp(data_normalized)
+summary(data.pca)
+
+data.pca$loadings[, 1:2]
+library(factoextra)
+fviz_eig(data.pca, addlabels = TRUE)
+# Graph of the variables
+fviz_pca_var(data.pca, col.var = "black")
+
+fviz_cos2(data.pca, choice = "var", axes = 1:2)
+
+fviz_pca_var(data.pca, col.var = "cos2",
+             gradient.cols = c("black", "orange", "green"),
+             repel = TRUE)
+
+#Retrieve first 2 components
+PCA_df_nonna['nutrients_PC1']<- data.pca$scores[, 1]
+PCA_df_nonna['nutrients_PC2']<- data.pca$scores[, 2]
+```
+
+#General models excluding Uruguay
+
+```{r TP Full model excluding Uru}
+input <- 'Uruguay'
+df <- model_df[model_df$altregion != input,]
+
+TP_all_hund_linear_model <- glm(TP ~ Natural_5_qt  + Arable_imp_grass_100_qt +
+                         Forest_100_qt + Pastures.and.open.nature_100_qt +
+                          Animals_cont.t + Area.t + Depth.t + Fish+
+                         bio1.t + bio7.t, family=Gamma(link='log'),data = df)
+summary(TP_all_hund_linear_model)
+stepAIC(TP_all_hund_linear_model)
+
+TP_all_hund_linear_model_selected <- glm(formula = TP ~ Forest_100_qt + Animals_cont.t + Depth.t + 
+    Fish + bio1.t, family = Gamma(link = "log"), data = df)
+
+summary(TP_all_hund_linear_model_selected)
+tab_model(
+  TP_all_hund_linear_model_selected, 
+  show.intercept = TRUE, 
+  transform = NULL)
+
+plots <- visreg(TP_all_hund_linear_model_selected,gg=TRUE)
+combined_plot <- wrap_plots(plots)
+combined_plot
+
+```
+
+```{r TN Full model excluding Uru}
+TN_all_hund_linear_model <- glm(log_TN ~ Natural_5_qt + Arable_imp_grass_100_qt +
+                         Forest_100_qt + Pastures.and.open.nature_100_qt +
+                          Animals_cont.t + Area.t + Depth.t + Fish+
+                         bio1.t + bio7.t, data = df)
+summary(TN_all_hund_linear_model)
+stepAIC(TN_all_hund_linear_model)
+
+TN_all_hund_linear_model_selected <- glm(formula = TN ~ Arable_imp_grass_100_qt + Forest_100_qt + 
+    Animals_cont.t + Area.t + Depth.t, family = Gamma(link = "log"), 
+    data = df)
+
+summary(TN_all_hund_linear_model_selected
+        )
+test <- glm(formula = TN ~ Arable_100_qt + Forest_100_qt + Animals_cont.t + 
+    Area.t + Depth.t + bio7.t, family = Gamma(link = "log"), 
+    data = df)
+
+AIC(test,TN_all_hund_linear_model_selected)
+tab_model(
+  TN_all_hund_linear_model_selected, 
+  show.intercept = TRUE, 
+  transform = NULL)
+
+
+plots <- visreg(TN_all_hund_linear_model_selected,gg=TRUE)
+combined_plot <- wrap_plots(plots)
+combined_plot
+  
+```
+
+```{r}
+library(spdep)
+
+# Extracting residuals
+residuals_glm <- residuals(TP_all_hund_linear_model_selected, type = "response")
+
+
+# Create spatial coordinates
+coords <- cbind(df$X, df$Y)
+
+# Create a distance-based spatial weights matrix
+# Here, we use k-nearest neighbors (e.g., k = 4)
+nb <- knn2nb(knearneigh(coords, k = 4))
+
+# Create a spatial weights list object
+listw <- nb2listw(nb, style = "W")
+
+
+
+```
+
+
+```{r correlation}
+library(nlme)
+AnabaenaT1.exp <- glmmPQL(logit(AnabaenaAO) ~ (outdist + I(outdist^2)) * sampledepth , data = PT1, method = "ML",correlation = corExp(form = ~ long + lat, nugget=T),na.action=na.omit)
+
+
+glmmPQL(formula = TP ~ Forest_100_qt + Animals_cont.t + Depth.t + 
+    Fish + bio1.t, family = Gamma(link = "log"),data=df, correlation = corExp(form = ~ X + Y, nugget=T))
+
+
+
+```
+
+#Models in alternative bioregions
+
+```{r Atlantic}
+input <- 'Atlantic'
+df <- model_df[model_df$altregion == input,]
+
+
+TN_atl_hund_linear_model <- glm(TN ~ Natural_5_qt + Arable_100_qt + Imp_grassland_100_qt +
+                         Forest_100_qt + Pastures.and.open.nature_100_qt +
+                          Animals_cont.t + Area.t + Depth.t + Fish+
+                         bio1.t + bio7.t, family=Gamma(link='log'),data = df)
+summary(TN_atl_hund_linear_model)
+step(TN_atl_hund_linear_model)
+
+TN_atl_hund_linear_model_selected <- glm(formula = TN ~ Pastures.and.open.nature_100_qt + Animals_cont.t + 
+    bio1.t + bio7.t, family = Gamma(link = "log"), data = df)
+
+summary(TN_atl_hund_linear_model_selected)
+tab_model(
+  TN_atl_hund_linear_model_selected, 
+  show.intercept = TRUE, 
+  transform = NULL)
+
+plots <- visreg(TN_atl_hund_linear_model_selected,gg=TRUE)
+combined_plot <- wrap_plots(plots)
+combined_plot
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
