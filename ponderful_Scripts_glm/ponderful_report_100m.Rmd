@@ -31,6 +31,7 @@ hundred_df <- read.csv('/Users/lidiayung/PhD_project/project_PONDERFUL/ponderful
 hundred_df$Country <- as.factor(hundred_df$Country)
 levels(hundred_df$Country)
 
+hist(hundred_df$Hydeoperiod_length)
 ##Alternative categories
 ## Bio climatic regions
 hundred_df$altregion <- 'Atlantic'
@@ -72,14 +73,19 @@ columns_with_na
 hist(hundred_df_standardized$TN,main='Distribution of Response Variable TN(n=238)',xlab = 'TN')
 hist(hundred_df_standardized$TP,main='Distribution of Response Variable TP',xlab = 'TP')
 
+#Fish var 0.5 means that in two consecutive years there was a 0 and a 1
+hundred_df_standardized$Fish[hundred_df_standardized$Fish == 0.5] <- 1
+
+hist(hundred_df_standardized$Fish)
+
+table(hundred_df$Fish)
 ```
 
 ```{r model df}
 model_df <- hundred_df_standardized[,c('PondCode','log_TN','TN','TP','Natural_5_qt','Arable_100_qt','Imp_grassland_100_qt',
-                                          'Depth.t','Forest_100_qt','Area.t','Pastures.and.open.nature_100_qt','Arable_imp_grass_100_qt',
+                                          'Depth.t','Forest_100_qt','Area.t','Pastures.and.open.nature_100_qt','Arable_imp_grass_100_qt','Hydeoperiod_length','Hydeoperiod_length.t',
                                         'Animals_cont.t','bio1.t','bio7.t','bio5.t','bio12.t','altregion','bio7','Fish','X','Y','Arable_100'
                                           )]
-model_df<- na.omit(model_df)
 
 
 corrplot(cor(model_df[,c( 'Natural_5_qt','Arable_100_qt', 'Arable_100','Imp_grassland_100_qt','Arable_imp_grass_100_qt',
@@ -93,16 +99,24 @@ round(cor(model_df[,c( 'Natural_5_qt','Arable_100_qt', 'Arable_100','Imp_grassla
                                                 'Animals_cont.t','Fish',
                             'bio1.t','bio7.t','bio5.t','bio12.t')]),2)
 ```
-```{r PCA}
+
+#PCA on countries excluding Uruguay
+```{r PCA on Euro Medi}
+library(factoextra)
 PCA_vars <- c('Arable_100_qt','Imp_grassland_100_qt','Forest_100_qt','Pastures.and.open.nature_100_qt')
 
-data_normalized <- model_df[,PCA_vars]
+input <- 'Uruguay'
+df <- model_df[model_df$altregion != input,]
+dim(model_df[model_df$altregion != input,])
+data_normalized <- df[,PCA_vars]
+
+data_normalized <- na.omit(data_normalized)
 
 data.pca <- princomp(data_normalized)
 summary(data.pca)
 
-data.pca$loadings[, 1:2]
-library(factoextra)
+data.pca$loadings[, 1:4]
+
 fviz_eig(data.pca, addlabels = TRUE)
 # Graph of the variables
 fviz_pca_var(data.pca, col.var = "black")
@@ -114,15 +128,15 @@ fviz_pca_var(data.pca, col.var = "cos2",
              repel = TRUE)
 
 #Retrieve first 2 components
-PCA_df_nonna['nutrients_PC1']<- data.pca$scores[, 1]
-PCA_df_nonna['nutrients_PC2']<- data.pca$scores[, 2]
+df['lu100_PC1']<- data.pca$scores[, 1]
+df['lu100_PC2']<- data.pca$scores[, 2]
 ```
 
 #General models excluding Uruguay
 
 ```{r TP Full model excluding Uru}
-input <- 'Uruguay'
-df <- model_df[model_df$altregion != input,]
+
+test <- subset(hundred_df,is.na(Fish))
 
 TP_all_hund_linear_model <- glm(TP ~ Natural_5_qt  + Arable_imp_grass_100_qt +
                          Forest_100_qt + Pastures.and.open.nature_100_qt +
@@ -144,6 +158,22 @@ plots <- visreg(TP_all_hund_linear_model_selected,gg=TRUE)
 combined_plot <- wrap_plots(plots)
 combined_plot
 
+#PCs
+
+df$Hydeoperiod_length
+TP_all_pc_hund_linear_model <- glm(TP ~  lu100_PC1+lu100_PC2+
+                          Animals_cont.t + Area.t + Depth.t + Fish+Hydeoperiod_length.t+
+                         bio1.t + bio7.t, family=Gamma(link='log'),data = df)
+summary(TP_all_pc_hund_linear_model)
+step(TP_all_pc_hund_linear_model)
+TP_all_pc_hund_linear_model_selected <- glm(formula = TP ~ lu100_PC2 + Animals_cont.t + Depth.t + Fish + 
+    bio1.t, family = Gamma(link = "log"), data = df)
+
+summary(TP_all_pc_hund_linear_model_selected)
+tab_model(
+  TP_all_pc_hund_linear_model_selected, 
+  show.intercept = TRUE, 
+  transform = NULL)
 ```
 
 ```{r TN Full model excluding Uru}
@@ -175,6 +205,28 @@ plots <- visreg(TN_all_hund_linear_model_selected,gg=TRUE)
 combined_plot <- wrap_plots(plots)
 combined_plot
   
+# Check which columns contain NA values
+na_columns <- sapply(df, function(x) any(is.na(x)))
+
+# Display the names of columns that contain NA values
+columns_with_na <- names(df)[na_columns]
+columns_with_na
+
+
+TN_all_pc_hund_linear_model <- glm(log_TN ~  lu100_PC1+lu100_PC2+
+                          Animals_cont.t + Area.t + Depth.t + Fish+Hydeoperiod_length.t+
+                         bio1.t + bio7.t, data = df)
+
+summary(TN_all_pc_hund_linear_model)
+df <-na.omit(df)
+step(TN_all_pc_hund_linear_model)
+TN_all_pc_hund_linear_model_selected <- glm(formula = log_TN ~ lu100_PC1 + lu100_PC2 + Animals_cont.t + 
+    Area.t + Depth.t + Fish + bio7.t, data = df)
+
+
+summary(TN_all_pc_hund_linear_model_selected)
+tab_model(TN_all_pc_hund_linear_model_selected,show.intercept = TRUE, transform = NULL)
+
 ```
 
 ```{r}
