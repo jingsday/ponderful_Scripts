@@ -84,7 +84,10 @@ table(hundred_df$Fish)
 ```{r model df}
 model_df <- hundred_df_standardized[,c('PondCode','log_TN','TN','TP','Natural_5_qt','Arable_100_qt','Imp_grassland_100_qt',
                                           'Depth.t','Forest_100_qt','Area.t','Pastures.and.open.nature_100_qt','Arable_imp_grass_100_qt','Hydeoperiod_length','Hydeoperiod_length.t',
-                                        'Animals_cont.t','bio1.t','bio7.t','bio5.t','bio12.t','altregion','bio7','Fish','X','Y','Arable_100'
+                                        'Animals_cont.t','bio1.t','bio7.t','bio5.t','bio12.t','altregion','bio7','Fish','X','Y','Arable_100','Natural_5_qt', 'Aquatic_500_qt',
+                                                     'Cropland_500_qt', 'Natural_5',
+                                                     'Forest_500_qt', 'Pastures.and.open.nature_500_qt',
+                                                     'Urban_500_qt'
                                           )]
 
 
@@ -292,6 +295,37 @@ combined_plot
 ```
 
 
+```{r 500m and fish}
+TP_glm_500m <- glm(formula = TP ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
+    Animals_cont.t + Depth.t + bio1.t+Fish+Hydeoperiod_length.t, family = Gamma(link = "log"), 
+    data = df)
+df <-na.omit(df)
+
+summary(TP_glm_500m)
+
+stepAIC(TP_glm_500m)
+
+selected <-glm(formula = TP ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
+    Animals_cont.t + Depth.t + bio1.t, family = Gamma(link = "log"), 
+    data = df)
+summary(selected)
+tab_model(selected,show.intercept = TRUE,transform = NULL)
+
+
+TN_log_500m <- glm(log_TN ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt +
+                            Pastures.and.open.nature_500_qt +
+                             Urban_500_qt + Animals_cont.t + Area.t + Depth.t +
+                             bio1.t+bio7.t+Fish+Hydeoperiod_length.t, 
+                           data = df)
+summary(TN_log_500m)
+step(TN_log_500m)
+
+TN_log_500m_selected <-glm(formula = log_TN ~ Natural_5_qt + Cropland_500_qt + Animals_cont.t + 
+    Area.t + Depth.t + bio7.t + Fish, data = df)
+ 
+summary(TN_log_500m_selected) 
+tab_model(TN_log_500m_selected,show.intercept = TRUE,transform=NULL)
+```
 
 
 
