@@ -19,11 +19,42 @@ library(corrplot)
 library(sjPlot)
 library(gratia) 
 library(patchwork)
+library(preprocessCore)
+colnames(hundred_df)
 ```
 
 #Prep
 
 ```{r 100m buffer general models}
+dom_landcover <- read.csv('/Users/lidiayung/Downloads/PhyChe_XY_landcover(in).csv')
+dom_landcover
+lu_100.t <- normalize.quantiles(as.matrix(hundred_df[,c('Arable_imp_grass','Forest_100','Pasture_Open_nature_100','Other_100')])
+)
+View(lu_100.t)
+
+transformar_columna <- function(x) {
+  perc <- rank(x, na.last = "keep") / (sum(!is.na(x)) + 1)  # Calcular los percentiles manteniendo los NA
+  result <- ifelse(!is.na(x), qnorm(perc), NA)  # Transformar los percentiles a la distribución normal, manteniendo los NA
+  return(result)
+}
+
+check <- as.data.frame(apply(hundred_df[,c('Cropland_500','Aquatic_500','Forest_500','Urban_500')], 2, transformar_columna))
+
+check <- as.data.frame(apply(phy_che[, c('Cropland_500', 'Aquatic_500', 'Forest_500', 'Urban_500')], 2, transformar_columna))
+
+combined_df <- cbind(phy_che[, c('Cropland_500', 'Aquatic_500', 'Forest_500', 'Urban_500')], check)
+View(hundred_df[, c('Cropland_500', 'Aquatic_500')])
+
+View(combined_df)
+
+
+hundred_df[,c('Cropland_500','Aquatic_500','Forest_500','Urban_500')]
+hist(check$Arable_imp_grass)
+
+lu_500.t <- normalize.quantiles(as.matrix(hundred_df[,c('Cropland_500','Aquatic_500','Forest_500','Urban_500')])
+)
+
+View(phy_che[,c('Cropland_500','Aquatic_500','Forest_500','Urban_500')])
 #df with transformed vars
 hundred_df <- read.csv('/Users/lidiayung/PhD_project/project_PONDERFUL/ponderful_OUTPUT/Phy_Che_oct_qt.csv')
 
@@ -44,7 +75,7 @@ hundred_df[hundred_df$Country == 'Switzerland',]$altregion <- 'Switzerland'
 ##Factors and transformation 
 hundred_df$Country <- as.factor(hundred_df$Country)
 levels(hundred_df$Country)
-
+View(hundred_df)
 hundred_df$altregion <- as.factor(hundred_df$altregion)
 levels(hundred_df$altregion)
 
@@ -52,6 +83,14 @@ hundred_df_standardized <- hundred_df %>%
   mutate(across(c(Natural_5_qt,Arable_100_qt, Imp_grassland_100_qt, 
                   Forest_100_qt, Pastures.and.open.nature_100_qt, 
                   Animals_cont.t, Area.t, Depth.t, 
+                  Aquatic_500_qt, Cropland_500_qt,
+                  Forest_500_qt, Pastures.and.open.nature_500_qt,
+                  Urban_500_qt,Natural_5.t,
+                  #Arable_100.t, Imp_grassland_100.t, 
+                  #Forest_100.t, Pastures.and.open.nature_100.t, 
+                  Aquatic_500.t, Cropland_500.t,
+                  Forest_500_qt, Pastures.and.open.nature_500.t,
+                  Urban_500.t,
                   bio1.t,bio4.t,bio5.t,
                   bio6.t,bio7.t,
                   bio12.t,bio15.t,bio17.t), 
@@ -87,11 +126,13 @@ model_df <- hundred_df_standardized[,c('PondCode','log_TN','TN','TP','Natural_5_
                                         'Animals_cont.t','bio1.t','bio7.t','bio5.t','bio12.t','altregion','bio7','Fish','X','Y','Arable_100','Natural_5_qt', 'Aquatic_500_qt',
                                                      'Cropland_500_qt', 'Natural_5',
                                                      'Forest_500_qt', 'Pastures.and.open.nature_500_qt',
-                                                     'Urban_500_qt'
+                                                     'Urban_500_qt','Aquatic_500.t', 'Cropland_500.t',
+                  'Forest_500_qt', 'Pastures.and.open.nature_500.t',
+                  'Urban_500.t', "Natural_5.t"
                                           )]
 
 
-corrplot(cor(model_df[,c( 'Natural_5_qt','Arable_100_qt', 'Arable_100','Imp_grassland_100_qt','Arable_imp_grass_100_qt',
+corrplot(cor(df[,c( 'Natural_5_qt','Arable_100_qt', 'Arable_100','Imp_grassland_100_qt','Arable_imp_grass_100_qt',
                                                 'Depth.t','Forest_100_qt','Area.t','Pastures.and.open.nature_100_qt',
                                                 'Animals_cont.t','Fish',
                             'bio1.t','bio7.t','bio5.t','bio12.t')]),
@@ -138,7 +179,6 @@ df['lu100_PC2']<- data.pca$scores[, 2]
 #General models excluding Uruguay
 
 ```{r TP Full model excluding Uru}
-
 test <- subset(hundred_df,is.na(Fish))
 
 TP_all_hund_linear_model <- glm(TP ~ Natural_5_qt  + Arable_imp_grass_100_qt +
@@ -266,6 +306,76 @@ glmmPQL(formula = TP ~ Forest_100_qt + Animals_cont.t + Depth.t +
 
 ```
 
+```{r 500m and fish}
+TP_glm_500m <- glm(formula = TP ~ Natural_5_qt+Cropland_500_qt + Pastures.and.open.nature_500_qt + 
+    Animals_cont.t + Depth.t + bio1.t+Fish+Hydeoperiod_length.t, family = Gamma(link = "log"), 
+    data = df)
+
+
+summary(TP_glm_500m)
+
+stepAIC(TP_glm_500m)
+
+selected <- glm(formula = TP ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
+    Animals_cont.t + Depth.t + bio1.t, family = Gamma(link = "log"), 
+    data = df)
+summary(selected)
+tab_model(test_selected,show.intercept = TRUE,transform = NULL)
+dev_resid <- residuals(selected,type="deviance")
+
+shapiro.test(dev_resid)
+#model with qt normalized model 
+test <- glm(formula = TP ~ Natural_5.t+Cropland_500.t + Pastures.and.open.nature_500.t + 
+    Animals_cont.t + Depth.t + bio1.t+Fish+Hydeoperiod_length.t, family = Gamma(link = "log"), 
+    data = df)
+summary(test)
+step(test)
+test_selected <- glm(formula = TP ~ Natural_5.t + Cropland_500.t + Pastures.and.open.nature_500.t + 
+    Animals_cont.t + Depth.t + bio1.t, family = Gamma(link = "log"), 
+    data = df)
+summary(test_selected)
+
+tab_model(test_selected)
+deviance_value <- deviance(test_selected)
+pearson_chi_sq <- sum(residuals(test_selected, type = "pearson")^2)
+
+cat("Deviance:", deviance_value, "\n")
+cat("Pearson Chi-square:", pearson_chi_sq, "\n")
+
+
+#TN
+test_TN <- glm(log_TN ~ Natural_5.t + Aquatic_500.t + Cropland_500.t +
+                            Pastures.and.open.nature_500.t +
+                             Urban_500.t + Animals_cont.t + Area.t + Depth.t +
+                             bio1.t+bio7.t+Fish+Hydeoperiod_length.t, 
+                           data = df)
+summary(test_TN)
+step(test_TN)
+
+test_TN_selected <- glm(formula = log_TN ~ Natural_5.t + Cropland_500.t + Animals_cont.t + 
+    Area.t + Depth.t + bio7.t + Fish, data = df)
+summary(test_TN_selected)
+dev_resid <- residuals(test_TN_selected,type="deviance")
+
+shapiro.test(dev_resid)
+
+tab_model(test_TN_selected,show.intercept = TRUE,transform = NULL)
+
+TN_log_500m <- glm(log_TN ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt +
+                            Pastures.and.open.nature_500_qt +
+                             Urban_500_qt + Animals_cont.t + Area.t + Depth.t +
+                             bio1.t+bio7.t+Fish+Hydeoperiod_length.t, 
+                           data = df)
+summary(TN_log_500m)
+step(TN_log_500m)
+
+TN_log_500m_selected <-glm(formula = log_TN ~ Natural_5_qt + Cropland_500_qt + Animals_cont.t + 
+    Area.t + Depth.t + bio7.t + Fish, data = df)
+ 
+summary(TN_log_500m_selected) 
+tab_model(TN_log_500m_selected,show.intercept = TRUE,transform=NULL)
+```
+
 #Models in alternative bioregions
 
 ```{r Atlantic}
@@ -295,37 +405,7 @@ combined_plot
 ```
 
 
-```{r 500m and fish}
-TP_glm_500m <- glm(formula = TP ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
-    Animals_cont.t + Depth.t + bio1.t+Fish+Hydeoperiod_length.t, family = Gamma(link = "log"), 
-    data = df)
-df <-na.omit(df)
 
-summary(TP_glm_500m)
-
-stepAIC(TP_glm_500m)
-
-selected <-glm(formula = TP ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
-    Animals_cont.t + Depth.t + bio1.t, family = Gamma(link = "log"), 
-    data = df)
-summary(selected)
-tab_model(selected,show.intercept = TRUE,transform = NULL)
-
-
-TN_log_500m <- glm(log_TN ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt +
-                            Pastures.and.open.nature_500_qt +
-                             Urban_500_qt + Animals_cont.t + Area.t + Depth.t +
-                             bio1.t+bio7.t+Fish+Hydeoperiod_length.t, 
-                           data = df)
-summary(TN_log_500m)
-step(TN_log_500m)
-
-TN_log_500m_selected <-glm(formula = log_TN ~ Natural_5_qt + Cropland_500_qt + Animals_cont.t + 
-    Area.t + Depth.t + bio7.t + Fish, data = df)
- 
-summary(TN_log_500m_selected) 
-tab_model(TN_log_500m_selected,show.intercept = TRUE,transform=NULL)
-```
 
 
 
