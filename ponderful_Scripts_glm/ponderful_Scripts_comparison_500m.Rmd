@@ -3,6 +3,9 @@ title: "comparison_models"
 author: "Jing"
 date: "2024-10-17"
 output: html_document
+Context: Normalization of satellite-resolution LU500 variables are realized using standard QT.
+ 
+
 ---
 
 ```{r setup, include=FALSE}
@@ -40,11 +43,11 @@ hist(hundred_df$Hydeoperiod_length)
 ##Alternative categories
 ## Bio climatic regions
 hundred_df$altregion <- 'Atlantic'
-
+table(hundred_df$Country)
 hundred_df[hundred_df$Country == 'Spain' | hundred_df$Country == 'Turkey', "altregion"] <- 'Mediterranean'
-hundred_df[hundred_df$Country == 'Belgium' | hundred_df$Country == 'Germany', "altregion"] <- 'BelGE'
+hundred_df[hundred_df$Country == 'Belgium' | hundred_df$Country == 'Germany'
+           | hundred_df$Country == 'Switzerland', "altregion"] <- 'centralEU'
 hundred_df[hundred_df$Country == 'Uruguay',]$altregion <- 'Uruguay'
-hundred_df[hundred_df$Country == 'Switzerland',]$altregion <- 'Switzerland'
 
 ##Factors and transformation 
 hundred_df$Country <- as.factor(hundred_df$Country)
@@ -97,8 +100,6 @@ hist(hundred_df$Fish)
 hundred_df[,c('bio1.s','bio7.s','bio5.s','bio12.s','Hydeoperiod_length.s','Animals_cont.s','Area.s')] <-scale(hundred_df[,c('bio1.t','bio7.t','bio5.t','bio12.t','Hydeoperiod_length.t','Animals_cont.t','Area.t')], center = TRUE, scale = TRUE)
 
 hist(hundred_df$Pastures.and.open.nature_500.t)
-
-
 ```
 
 ```{r excluding uru df}
