@@ -6,25 +6,304 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(include = FALSE)
+library(dplyr)
+library(mgcv)
+library(ggplot2)
+library(nlme)
+library(fitdistrplus)
+library(bestNormalize)
+library(visreg)
+library(lmerTest)
+library(corrplot)
+library(sjPlot)
+library(gratia) 
+library(patchwork)
+library(preprocessCore)
 ```
 
-## R Markdown
+```{r 100m buffer general models}
+dom_landcover <- read.csv('~/PhD_project/project_PONDERFUL/ponderful_DATA/ponderful_DATA_updated/dom_landcover.csv')
+#View(dom_landcover)
+outwdir <- '/Users/lidiayung/PhD_project/project_PONDERFUL/ponderful_Scripts/ponderful_OUTPUT/'
+##Country as factors
+dom_landcover$Country <- as.factor(dom_landcover$Country)
+levels(dom_landcover$Country)
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+##Alternative categories
+## Bio climatic regions
+dom_landcover$altregion <- 'Atlantic'
+dom_landcover[dom_landcover$Country == 'Spain' | dom_landcover$Country == 'Turkey', "altregion"] <- 'Mediterranean'
+dom_landcover[dom_landcover$Country == 'Belgium' | dom_landcover$Country == 'Germany'
+           | dom_landcover$Country == 'Switzerland', "altregion"] <- 'centralEU'
+#dom_landcover[dom_landcover$Country == 'Uruguay',]$altregion <- 'Uruguay'
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+##Factors and transformation 
+dom_landcover$altregion <- as.factor(dom_landcover$altregion)
+levels(dom_landcover$altregion)
 
-```{r cars}
-summary(cars)
+#Adding log_TN (and log_TP)
+dom_landcover$log_TN <- log(dom_landcover$TN,base=10)
+hist(dom_landcover$log_TN)
+shapiro.test(dom_landcover$log_TN)
+
+dom_landcover$log_TP <- log(dom_landcover$TP,base=10)
+hist(dom_landcover$log_TP)
+shapiro.test(dom_landcover$log_TP)
+
+
+# Check which columns contain NA values
+na_columns <- sapply(dom_landcover, function(x) any(is.na(x)))
+
+# Display the names of columns that contain NA values
+columns_with_na <- names(dom_landcover)[na_columns]
+columns_with_na
+
+
+hist(dom_landcover$TN,main='Distribution of Response Variable TN(n=211)',xlab = 'TN')
+hist(dom_landcover$TP,main='Distribution of Response Variable TP',xlab = 'TP')
+
+#Fish var 0.5 means that in two consecutive years there was a 0 and a 1
+dom_landcover$Fish[dom_landcover$Fish == 0.5] <- 1
+hist(dom_landcover$Fish)
 ```
 
-## Including Plots
+```{r Predictors selection, normalization and standarisation}
+#LU variables standerized already. Method used is as follow
+ transformar_columna <- function(x) {
+   perc <- rank(x, na.last = "keep") / (sum(!is.na(x)) + 1)  # Calcular los percentiles manteniendo los NA
+   result <- ifelse(!is.na(x), qnorm(perc), NA)  # Transformar los percentiles a la distribución normal, manteniendo los NA
+   return(result)}
+colnames(dom_landcover)
 
-You can also embed plots, for example:
+dom_landcover$Hydeoperiod_length.T<-transformar_columna(dom_landcover$Hydeoperiod_length)
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+model_df <- dom_landcover[,c('Pondscape','Country','altregion','X','Y','TN','log_TN',
+                             'TP','log_TP','bio1.t','bio7.t','bio5.t','bio12.t',
+                             'Fish','Hydeoperiod_length.t','Hydeoperiod_length.T','Area.t',
+                             'Depth.t','Animals_cont.t', "Aquatic_500.t",   
+                             "Cropland_500.t","Forest_500.t","Pastures.and.open.nature_500.t" ,
+                             "Urban_500.t", "Natural_5.t")]
+model_df <-na.omit(model_df)
+
+
+#non-standarized variables:'bio1.t','bio7.t','bio5.t','bio12.t','Hydeoperiod_length.t','Fish','Animals_cont.t'
+
+model_df[,c('bio1.s','bio7.s','bio5.s','bio12.s','Hydeoperiod_length.s','Animals_cont.s','Area.s')] <-scale(model_df[,c('bio1.t','bio7.t','bio5.t','bio12.t','Hydeoperiod_length.t','Animals_cont.t','Area.t')], center = TRUE, scale = TRUE)
+
+for (i in c('bio1.t','bio1.s','bio7.t','bio7.s','bio5.t','bio5.s',
+            'bio12.t','bio12.s','Hydeoperiod_length.t','Hydeoperiod_length.T','Area.t','Area.s',
+            'Animals_cont.t','Animals_cont.s')){
+  hist(model_df[[i]],main = paste("Histogram of", i), xlab = i)
+}
+
+model_df <- dom_landcover[,c('Pondscape','Country','altregion','X','Y','TN','log_TN',
+                             'TP','log_TP','bio1.t','bio7.t','bio5.t','bio12.t',
+                             'Fish','Hydeoperiod_length.t','Hydeoperiod_length.T','Area.t',
+                             'Depth.t','Animals_cont.t', "Aquatic_500.t",   
+                             "Cropland_500.t","Forest_500.t","Pastures.and.open.nature_500.t" ,
+                             "Urban_500.t", "Natural_5.t")]
+model_df <-na.omit(model_df)
+
+
+ggplot(data = dom_landcover, aes(x = TN)) +
+  geom_histogram()+
+  labs(x = 'TN (mg/L)')
+ggsave(paste0(outwdir,'TN_hist_204.eps'))
+
+
+ggplot(data = dom_landcover, aes(x = TP)) +
+  geom_histogram()+
+  labs(x = 'TP (mg/L)')
+ggsave(paste0(outwdir,'TP_hist_204.eps'))
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+
+corrplot(cor(model_df[,c( 'Natural_5.t','Cropland_500.t', 'Pastures.and.open.nature_500.t', 'Area.t','Animals_cont.t',
+                    'bio1.t','bio7.t','bio5.t','bio12.t')]))
+```
+
+
+```{r TN excl. Uru}
+
+corrplot(corr())
+TN_exc_linear_model <- glm(log_TN ~ Natural_5.t + Aquatic_500.t + Cropland_500.t +
+                            Pastures.and.open.nature_500.t +
+                             Urban_500.t + Animals_cont.t + Area.t + Depth.t +
+                             bio1.t+bio7.t+Fish+Hydeoperiod_length.T, 
+                           data = model_df)
+
+
+
+
+summary(TN_exc_linear_model)
+step(TN_exc_linear_model)
+
+test<-  glm(formula = log_TN ~ Cropland_500.t + Animals_cont.t + Depth.t + 
+    bio1.t + bio7.t + Fish, data = model_df)
+summary(test)
+
+
+
+check <-  glm(log_TN ~ Natural_5.t + Aquatic_500.t + Cropland_500.t +
+                            Pastures.and.open.nature_500.t +
+                             Urban_500.t + Animals_cont.t + Area.t + Depth.t +
+                             bio1.t+bio7.t+Fish+Hydeoperiod_length.t, 
+                           data = model_df)
+step(check)
+check_selected <-glm(formula = log_TN ~ Cropland_500.t + Animals_cont.t + Depth.t + 
+                       bio1.t + bio7.t + Fish, data = model_df)
+summary(test)
+tab_model(check_selected)
+TN_exc_linear_model_selected <-  glm(formula = log_TN ~ Natural_5.t + Cropland_500.t + Animals_cont.s + 
+    Area.s + Depth.t + bio7.s + Fish, data = model_df)
+
+##############
+TN_exc_linear_model <- glm(log_TN ~ Natural_5.t + Aquatic_500.t + Cropland_500.t +
+                            Pastures.and.open.nature_500.t +
+                             Urban_500.t + Animals_cont.s + Area.s + Depth.t +
+                             bio1.s+bio7.s+Fish+Hydeoperiod_length.s, 
+                           data = model_df)
+
+hist(model_df$Hydeoperiod_length.s)
+
+
+summary(TN_exc_linear_model)
+step(TN_exc_linear_model)
+
+
+TN_exc_linear_model_selected <-  glm(formula = log_TN ~ Natural_5.t + Cropland_500.t + Animals_cont.s + 
+    Area.s + Depth.t + bio7.s + Fish, data = model_df)
+############
+
+summary(TN_exc_linear_model_selected)
+tab_model(TN_exc_linear_model_selected)
+
+plots <- visreg(TN_exc_linear_model_selected,gg=TRUE)
+combined_plot <- wrap_plots(plots)
+combined_plot
+
+diagnostic_plots <- appraise(TN_exc_linear_model_selected)
+diagnostic_plots
+
+dev_resid <- residuals(TN_exc_linear_model_selected,type="deviance")
+shapiro.test(dev_resid)
+
+
+
+dev_resid <- residuals(test,type="deviance")
+shapiro.test(dev_resid)
+
+test_selected <- glm(formula = log_TP ~ Natural_5.t + Cropland_500.t + Pastures.and.open.nature_500.t + 
+    Animals_cont.s + Depth.t + bio1.s + Fish, data = model_df)
+summary(test_selected)
+tab_model(test_selected)
+
+dev_resid <- residuals(test_selected,type="deviance")
+shapiro.test(dev_resid)
+
+#qt
+TN_exc_linear_model_selected <-glm(log_TN ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt +
+                            Pastures.and.open.nature_500_qt +
+                             Urban_500_qt + Animals_cont.s + Area.s + Depth.t +
+                             bio1.s+bio7.s+Fish+Hydeoperiod_length.s, 
+                           data = model_df)
+
+
+summary(TN_exc_linear_model_selected)
+step(TN_exc_linear_model_selected)
+
+
+TN_exc_linear_model_selected_qt <-glm(formula = log_TN ~ Natural_5_qt + Cropland_500_qt + Animals_cont.s + 
+    Area.s + Depth.t + bio7.s + Fish, data = model_df)
+
+summary(TN_exc_linear_model_selected_qt)
+tab_model(TN_exc_linear_model_selected_qt)
+
+
+plots <- visreg(TN_exc_linear_model_selected_qt,gg=TRUE)
+combined_plot <- wrap_plots(plots)
+combined_plot
+
+diagnostic_plots <- appraise(TN_exc_linear_model_selected_qt)
+diagnostic_plots
+
+
+dev_resid <- residuals(TN_exc_linear_model_selected_qt,type="deviance")
+shapiro.test(dev_resid)
+
+```
+
+
+
+```{r TP models}
+TP_exc_linear_model <- glm(TP ~ Natural_5.t+Cropland_500.t + Pastures.and.open.nature_500.t + 
+                             Animals_cont.s + Depth.t + bio1.s+Fish+Hydeoperiod_length.T, family = Gamma(link = "log"),
+                           data = model_df)
+
+summary(TP_exc_linear_model)
+step(TP_exc_linear_model)
+
+TP_exc_linear_model_selected <-  glm(formula = TP ~ Natural_5.t + Cropland_500.t + Pastures.and.open.nature_500.t + 
+    Animals_cont.s + Depth.t + bio1.s, family = Gamma(link = "log"), 
+    data = model_df)
+
+summary(TP_exc_linear_model_selected)
+tab_model(TP_exc_linear_model_selected)
+
+plots <- visreg(TP_exc_linear_model_selected,gg=TRUE)
+combined_plot <- wrap_plots(plots)
+combined_plot
+
+diagnostic_plots <- appraise(TP_exc_linear_model_selected)
+diagnostic_plots
+
+dev_resid <- residuals(TP_exc_linear_model_selected,type="deviance")
+shapiro.test(dev_resid)
+
+
+test <- glm(log_TP ~   Natural_5.t+Cropland_500.t + Pastures.and.open.nature_500.t + 
+                             Animals_cont.s + Depth.t + bio1.s+Fish+Hydeoperiod_length.s, 
+                           data = model_df)
+
+summary(test)
+step(test)
+tab_model(test)
+
+dev_resid <- residuals(test,type="deviance")
+shapiro.test(dev_resid)
+
+test_selected <- glm(formula = log_TP ~ Natural_5.t + Cropland_500.t + Pastures.and.open.nature_500.t + 
+    Animals_cont.s + Depth.t + bio1.s + Fish, data = model_df)
+summary(test_selected)
+tab_model(test_selected)
+
+dev_resid <- residuals(test_selected,type="deviance")
+shapiro.test(dev_resid)
+
+#qt
+TP_exc_linear_model <-glm(formula = TP ~ Natural_5_qt+Cropland_500_qt + Pastures.and.open.nature_500_qt + 
+    Animals_cont.s + Depth.t + bio1.s+Fish+Hydeoperiod_length.s, family = Gamma(link = "log"), 
+    data = model_df)
+
+summary(TP_exc_linear_model)
+step(TP_exc_linear_model)
+
+
+TP_exc_linear_model_selected_qt <-glm(formula = TP ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
+    Animals_cont.s + Depth.t + bio1.s, family = Gamma(link = "log"), 
+    data = model_df)
+
+summary(TP_exc_linear_model_selected_qt)
+tab_model(TP_exc_linear_model_selected_qt)
+
+
+plots <- visreg(TP_exc_linear_model_selected_qt,gg=TRUE)
+combined_plot <- wrap_plots(plots)
+combined_plot
+
+diagnostic_plots <- appraise(TP_exc_linear_model_selected_qt)
+diagnostic_plots
+```
