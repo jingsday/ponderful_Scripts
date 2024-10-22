@@ -36,6 +36,8 @@ dom_landcover$altregion <- 'Atlantic'
 dom_landcover[dom_landcover$Country == 'Spain' | dom_landcover$Country == 'Turkey', "altregion"] <- 'Mediterranean'
 dom_landcover[dom_landcover$Country == 'Belgium' | dom_landcover$Country == 'Germany'
            | dom_landcover$Country == 'Switzerland', "altregion"] <- 'centralEU'
+dom_landcover[dom_landcover$Country == 'Turkey', "altregion"] <- 'Turkey'
+
 #dom_landcover[dom_landcover$Country == 'Uruguay',]$altregion <- 'Uruguay'
 
 ##Factors and transformation 
@@ -77,233 +79,338 @@ hist(dom_landcover$Fish)
 colnames(dom_landcover)
 
 dom_landcover$Hydeoperiod_length.T<-transformar_columna(dom_landcover$Hydeoperiod_length)
+dom_landcover$Area.T<-transformar_columna(dom_landcover$Area)
+dom_landcover$Fish.T<-transformar_columna(dom_landcover$Fish)
+
+hist(dom_landcover$Fish.T)
 
 model_df <- dom_landcover[,c('Pondscape','Country','altregion','X','Y','TN','log_TN',
                              'TP','log_TP','bio1.t','bio7.t','bio5.t','bio12.t',
                              'Fish','Hydeoperiod_length.t','Hydeoperiod_length.T','Area.t',
                              'Depth.t','Animals_cont.t', "Aquatic_500.t",   
                              "Cropland_500.t","Forest_500.t","Pastures.and.open.nature_500.t" ,
-                             "Urban_500.t", "Natural_5.t")]
+                             "Urban_500.t", "Natural_5.t",'dominant_landcover')]
 model_df <-na.omit(model_df)
-
+dom_landcover$dominant_landcover
 
 #non-standarized variables:'bio1.t','bio7.t','bio5.t','bio12.t','Hydeoperiod_length.t','Fish','Animals_cont.t'
 
-model_df[,c('bio1.s','bio7.s','bio5.s','bio12.s','Hydeoperiod_length.s','Animals_cont.s','Area.s')] <-scale(model_df[,c('bio1.t','bio7.t','bio5.t','bio12.t','Hydeoperiod_length.t','Animals_cont.t','Area.t')], center = TRUE, scale = TRUE)
-
-for (i in c('bio1.t','bio1.s','bio7.t','bio7.s','bio5.t','bio5.s',
-            'bio12.t','bio12.s','Hydeoperiod_length.t','Hydeoperiod_length.T','Area.t','Area.s',
-            'Animals_cont.t','Animals_cont.s')){
-  hist(model_df[[i]],main = paste("Histogram of", i), xlab = i)
-}
-
-model_df <- dom_landcover[,c('Pondscape','Country','altregion','X','Y','TN','log_TN',
-                             'TP','log_TP','bio1.t','bio7.t','bio5.t','bio12.t',
-                             'Fish','Hydeoperiod_length.t','Hydeoperiod_length.T','Area.t',
-                             'Depth.t','Animals_cont.t', "Aquatic_500.t",   
+model_df[,c('bio1.s','bio7.s','bio5.s','bio12.s','Hydeoperiod_length.s','Animals_cont.s','Area.s','Fish.s','Depth.s',"Aquatic_500.s",   
+                             "Cropland_500.s","Forest_500.s","Pastures.and.open.nature_500.s" ,
+                             "Urban_500.s", "Natural_5.s")] <-scale(model_df[,c('bio1.t','bio7.t','bio5.t','bio12.t','Hydeoperiod_length.T','Animals_cont.t','Area.t','Fish','Depth.t',"Aquatic_500.t",   
                              "Cropland_500.t","Forest_500.t","Pastures.and.open.nature_500.t" ,
-                             "Urban_500.t", "Natural_5.t")]
+                             "Urban_500.t", "Natural_5.t")], center = TRUE, scale = TRUE)
+
 model_df <-na.omit(model_df)
 
-
-ggplot(data = dom_landcover, aes(x = TN)) +
-  geom_histogram()+
-  labs(x = 'TN (mg/L)')
-ggsave(paste0(outwdir,'TN_hist_204.eps'))
-
-
-ggplot(data = dom_landcover, aes(x = TP)) +
-  geom_histogram()+
-  labs(x = 'TP (mg/L)')
-ggsave(paste0(outwdir,'TP_hist_204.eps'))
+# 
+# ggplot(data = dom_landcover, aes(x = TN)) +
+#   geom_histogram()+
+#   labs(x = 'TN (mg/L)')
+# ggsave(paste0(outwdir,'TN_hist_204.eps'))
+# 
+# 
+# ggplot(data = dom_landcover, aes(x = TP)) +
+#   geom_histogram()+
+#   labs(x = 'TP (mg/L)')
+# ggsave(paste0(outwdir,'TP_hist_204.eps'))
 
 ```
 
-```{r}
-
-corrplot(cor(model_df[,c( 'Natural_5.t','Cropland_500.t', 'Pastures.and.open.nature_500.t', 'Area.t','Animals_cont.t',
-                    'bio1.t','bio7.t','bio5.t','bio12.t')]))
-```
-
-
-```{r TN excl. Uru}
-
-corrplot(corr())
-TN_exc_linear_model <- glm(log_TN ~ Natural_5.t + Aquatic_500.t + Cropland_500.t +
-                            Pastures.and.open.nature_500.t +
-                             Urban_500.t + Animals_cont.t + Area.t + Depth.t +
-                             bio1.t+bio7.t+Fish+Hydeoperiod_length.T, 
-                           data = model_df)
-
-
-
-
-summary(TN_exc_linear_model)
-step(TN_exc_linear_model)
-
-test<-  glm(formula = log_TN ~ Cropland_500.t + Animals_cont.t + Depth.t + 
-    bio1.t + bio7.t + Fish, data = model_df)
-summary(test)
-
-
-
-check <-  glm(log_TN ~ Natural_5.t + Aquatic_500.t + Cropland_500.t +
-                            Pastures.and.open.nature_500.t +
-                             Urban_500.t + Animals_cont.t + Area.t + Depth.t +
-                             bio1.t+bio7.t+Fish+Hydeoperiod_length.t, 
-                           data = model_df)
-step(check)
-check_selected <-glm(formula = log_TN ~ Cropland_500.t + Animals_cont.t + Depth.t + 
-                       bio1.t + bio7.t + Fish, data = model_df)
-summary(test)
-tab_model(check_selected)
-TN_exc_linear_model_selected <-  glm(formula = log_TN ~ Natural_5.t + Cropland_500.t + Animals_cont.s + 
-    Area.s + Depth.t + bio7.s + Fish, data = model_df)
-
-##############
-TN_exc_linear_model <- glm(log_TN ~ Natural_5.t + Aquatic_500.t + Cropland_500.t +
-                            Pastures.and.open.nature_500.t +
-                             Urban_500.t + Animals_cont.s + Area.s + Depth.t +
+```{r TN}
+TN_euromedi_model <- glm(log_TN ~ Natural_5.s + Aquatic_500.s + Cropland_500.s +
+                            Pastures.and.open.nature_500.s +
+                             Urban_500.s + Animals_cont.s + Area.s + Depth.s +
                              bio1.s+bio7.s+Fish+Hydeoperiod_length.s, 
                            data = model_df)
+summary(TN_euromedi_model)
+step(TN_euromedi_model)
 
-hist(model_df$Hydeoperiod_length.s)
+TN_euromedi_model_selected <- glm(formula = log_TN ~ Cropland_500.s + Animals_cont.s + Depth.s + 
+    bio1.s + bio7.s + Fish, data = model_df)
+               
+tab_model(TN_euromedi_model_selected,show.intercept = TRUE,transform = NULL)
 
+glmfit <- cv.glm(data = model_df, glmfit = TN_euromedi_model_selected,K = 4)
+glmfit$delta[2]
 
-summary(TN_exc_linear_model)
-step(TN_exc_linear_model)
+#GLMM
+TN_euromedi_mixed_model<- lmer(log_TN ~ Natural_5.s + Aquatic_500.s + Cropland_500.s +
+                            Pastures.and.open.nature_500.s +
+                            Urban_500.s + Animals_cont.s + Area.s + Depth.s + Fish+Hydeoperiod_length.s+
+                            bio1.s +bio7.s+ (1 | Country) , 
+                          data = model_df)
+summary(TN_euromedi_mixed_model)
+step(TN_euromedi_mixed_model)
 
+TN_euromedi_mixed_model_selected <- lmer(log_TN ~ Cropland_500.s + Animals_cont.s + Depth.s + Fish + (1 | Country),
+                                         data=model_df)
+summary(TN_euromedi_mixed_model_selected)
+tab_model(TN_euromedi_mixed_model_selected,show.intercept = TRUE,transform = NULL)
 
-TN_exc_linear_model_selected <-  glm(formula = log_TN ~ Natural_5.t + Cropland_500.t + Animals_cont.s + 
-    Area.s + Depth.t + bio7.s + Fish, data = model_df)
-############
+#GLMM country and landcover
+TN_euromedi_mixed_model<- lmer(log_TN ~ Natural_5.s + Aquatic_500.s + Cropland_500.s +
+                            Pastures.and.open.nature_500.s +
+                            Urban_500.s + Animals_cont.s + Area.s + Depth.s + Fish+Hydeoperiod_length.s+
+                            bio1.s +bio7.s+ (1 | Country)+ (1 | Country), 
+                          data = model_df)
+summary(TN_euromedi_mixed_model)
+step(TN_euromedi_mixed_model)
 
-summary(TN_exc_linear_model_selected)
-tab_model(TN_exc_linear_model_selected)
-
-plots <- visreg(TN_exc_linear_model_selected,gg=TRUE)
-combined_plot <- wrap_plots(plots)
-combined_plot
-
-diagnostic_plots <- appraise(TN_exc_linear_model_selected)
-diagnostic_plots
-
-dev_resid <- residuals(TN_exc_linear_model_selected,type="deviance")
-shapiro.test(dev_resid)
-
-
-
-dev_resid <- residuals(test,type="deviance")
-shapiro.test(dev_resid)
-
-test_selected <- glm(formula = log_TP ~ Natural_5.t + Cropland_500.t + Pastures.and.open.nature_500.t + 
-    Animals_cont.s + Depth.t + bio1.s + Fish, data = model_df)
-summary(test_selected)
-tab_model(test_selected)
-
-dev_resid <- residuals(test_selected,type="deviance")
-shapiro.test(dev_resid)
-
-#qt
-TN_exc_linear_model_selected <-glm(log_TN ~ Natural_5_qt + Aquatic_500_qt + Cropland_500_qt +
-                            Pastures.and.open.nature_500_qt +
-                             Urban_500_qt + Animals_cont.s + Area.s + Depth.t +
-                             bio1.s+bio7.s+Fish+Hydeoperiod_length.s, 
-                           data = model_df)
-
-
-summary(TN_exc_linear_model_selected)
-step(TN_exc_linear_model_selected)
-
-
-TN_exc_linear_model_selected_qt <-glm(formula = log_TN ~ Natural_5_qt + Cropland_500_qt + Animals_cont.s + 
-    Area.s + Depth.t + bio7.s + Fish, data = model_df)
-
-summary(TN_exc_linear_model_selected_qt)
-tab_model(TN_exc_linear_model_selected_qt)
-
-
-plots <- visreg(TN_exc_linear_model_selected_qt,gg=TRUE)
-combined_plot <- wrap_plots(plots)
-combined_plot
-
-diagnostic_plots <- appraise(TN_exc_linear_model_selected_qt)
-diagnostic_plots
-
-
-dev_resid <- residuals(TN_exc_linear_model_selected_qt,type="deviance")
-shapiro.test(dev_resid)
-
-```
+TN_euromedi_mixed_model_selected <- lmer(log_TN ~ Cropland_500.s + Animals_cont.s + Depth.s + Fish + (1 | Country),
+                                         data=model_df)
+summary(TN_euromedi_mixed_model_selected)
+tab_model(TN_euromedi_mixed_model_selected,show.intercept = TRUE,transform = NULL)
 
 
 
-```{r TP models}
-TP_exc_linear_model <- glm(TP ~ Natural_5.t+Cropland_500.t + Pastures.and.open.nature_500.t + 
-                             Animals_cont.s + Depth.t + bio1.s+Fish+Hydeoperiod_length.T, family = Gamma(link = "log"),
-                           data = model_df)
+#GLMM pondscape
+TN_euromedi_pond_mixed_model<- lmer(log_TN ~ Natural_5.s + Aquatic_500.s + Cropland_500.s +
+                            Pastures.and.open.nature_500.s +
+                            Urban_500.s + Animals_cont.s + Area.s + Depth.s + Fish+Hydeoperiod_length.s+
+                            bio1.s +bio7.s+(1| Pondscape: dominant_landcover) , 
+                          data = model_df)
+summary(TN_euromedi_pond_mixed_model)
+step(TN_euromedi_pond_mixed_model)
+###SELECTED 
+TN_euromedi_pond_mixed_model<- lmer(log_TN ~ Natural_5.s + Aquatic_500.s + Cropland_500.s +
+                            Pastures.and.open.nature_500.s +
+                            Urban_500.s + Animals_cont.s + Area.s + Depth.s + Fish+Hydeoperiod_length.s+
+                            bio1.s +bio7.s+(1 | Country) + (1 |dominant_landcover: Country), 
+                          data = model_df)
+step(TN_euromedi_pond_mixed_model)
+TN_euromedi_pond_mixed_model_selected <- lmer(log_TN ~ Cropland_500.s + Animals_cont.s + Fish + (1 | Country) + (1 |dominant_landcover: Country),data = model_df)
+summary(TN_euromedi_pond_mixed_model_selected)
+tab_model(TN_euromedi_pond_mixed_model_selected,show.intercept = TRUE,transform = NULL)
 
-summary(TP_exc_linear_model)
-step(TP_exc_linear_model)
+#dominant land coverage 
+TN_euromedi_dom_mixed_model<- lmer(log_TN ~ Natural_5.s + Aquatic_500.s + Cropland_500.s +
+                            Pastures.and.open.nature_500.s +
+                            Urban_500.s + Animals_cont.s + Area.s + Depth.s + Fish+Hydeoperiod_length.s+
+                            bio1.s +bio7.s+(1| dominant_landcover: Pondscape) , 
+                          data = model_df)
+summary(TN_euromedi_dom_mixed_model)
+step(TN_euromedi_dom_mixed_model)
 
-TP_exc_linear_model_selected <-  glm(formula = TP ~ Natural_5.t + Cropland_500.t + Pastures.and.open.nature_500.t + 
-    Animals_cont.s + Depth.t + bio1.s, family = Gamma(link = "log"), 
-    data = model_df)
+TN_euromedi_dom_mixed_model_selected <- lmer(log_TN ~ Cropland_500.s + Animals_cont.s + Depth.s + Fish + (1 | dominant_landcover:Pondscape), data=model_df)
+summary(TN_euromedi_dom_mixed_model_selected)
 
-summary(TP_exc_linear_model_selected)
-tab_model(TP_exc_linear_model_selected)
+tab_model(TN_euromedi_dom_mixed_model_selected,show.intercept = TRUE,transform = NULL)
 
-plots <- visreg(TP_exc_linear_model_selected,gg=TRUE)
-combined_plot <- wrap_plots(plots)
-combined_plot
+test<- lmer(log_TN ~ Natural_5.s + Aquatic_500.s + Cropland_500.s +
+                            Pastures.and.open.nature_500.s +
+                            Urban_500.s + Animals_cont.s + Area.s + Depth.s + Fish+Hydeoperiod_length.s+
+                            bio1.s +bio7.s+(1| dominant_landcover)+(1| dominant_landcover: Pondscape) , 
+                          data = model_df)
 
-diagnostic_plots <- appraise(TP_exc_linear_model_selected)
-diagnostic_plots
-
-dev_resid <- residuals(TP_exc_linear_model_selected,type="deviance")
-shapiro.test(dev_resid)
-
-
-test <- glm(log_TP ~   Natural_5.t+Cropland_500.t + Pastures.and.open.nature_500.t + 
-                             Animals_cont.s + Depth.t + bio1.s+Fish+Hydeoperiod_length.s, 
-                           data = model_df)
-
-summary(test)
 step(test)
-tab_model(test)
-
-dev_resid <- residuals(test,type="deviance")
-shapiro.test(dev_resid)
-
-test_selected <- glm(formula = log_TP ~ Natural_5.t + Cropland_500.t + Pastures.and.open.nature_500.t + 
-    Animals_cont.s + Depth.t + bio1.s + Fish, data = model_df)
+test_selected <- lmer(log_TN ~ Cropland_500.s + Animals_cont.s + Depth.s + Fish + (1 | dominant_landcover:Pondscape), 
+                          data = model_df)
 summary(test_selected)
-tab_model(test_selected)
+tab_model(test_selected,show.intercept = TRUE,transform = NULL)
 
-dev_resid <- residuals(test_selected,type="deviance")
-shapiro.test(dev_resid)
+##GLMM alregion 
 
-#qt
-TP_exc_linear_model <-glm(formula = TP ~ Natural_5_qt+Cropland_500_qt + Pastures.and.open.nature_500_qt + 
-    Animals_cont.s + Depth.t + bio1.s+Fish+Hydeoperiod_length.s, family = Gamma(link = "log"), 
-    data = model_df)
+TN_euromedi_altregion_mixed_model<- lmer(log_TN ~ Natural_5.s + Aquatic_500.s + Cropland_500.s +
+                            Pastures.and.open.nature_500.s +
+                            Urban_500.s + Animals_cont.s + Area.s + Depth.s + Fish+Hydeoperiod_length.s+
+                            bio1.s +bio7.s+(1| altregion) , 
+                          data = model_df)
+summary(TN_euromedi_altregion_mixed_model)
+step(TN_euromedi_altregion_mixed_model)
+levels(model_df$altregion)
 
-summary(TP_exc_linear_model)
-step(TP_exc_linear_model)
+##GLMM alregion nested 
+TN_euromedi_altregion_nest_mixed_model<- lmer(log_TN ~ Natural_5.s + Aquatic_500.s + Cropland_500.s +
+                            Pastures.and.open.nature_500.s +
+                            Urban_500.s + Animals_cont.s + Area.s + Depth.s + Fish+Hydeoperiod_length.s+
+                            bio1.s +bio7.s+(1| altregion:dominant_landcover) , 
+                          data = model_df)
+summary(TN_euromedi_altregion_nest_mixed_model)
+step(TN_euromedi_altregion_nest_mixed_model)
+
+levels(model_df$altregion)
+table(model_df$altregion,model_df$Country)
+
+AIC(TN_euromedi_altregion_nest_mixed_model,TN_euromedi_altregion_nest_mixed_model_selected)
+
+TN_euromedi_altregion_nest_mixed_model_selected <- lmer(log_TN ~ Cropland_500.s + Depth.s + Fish + (1 | altregion:dominant_landcover),data = model_df)
+summary(TN_euromedi_altregion_nest_mixed_model_selected)
+tab_model(TN_euromedi_altregion_nest_mixed_model_selected,show.intercept = TRUE,transform = NULL)
 
 
-TP_exc_linear_model_selected_qt <-glm(formula = TP ~ Cropland_500_qt + Pastures.and.open.nature_500_qt + 
-    Animals_cont.s + Depth.t + bio1.s, family = Gamma(link = "log"), 
-    data = model_df)
-
-summary(TP_exc_linear_model_selected_qt)
-tab_model(TP_exc_linear_model_selected_qt)
-
-
-plots <- visreg(TP_exc_linear_model_selected_qt,gg=TRUE)
-combined_plot <- wrap_plots(plots)
-combined_plot
-
-diagnostic_plots <- appraise(TP_exc_linear_model_selected_qt)
-diagnostic_plots
 ```
+
+```{r TP model}
+TP_euromedi_linear_model <- glm(TP ~ Natural_5.s+Cropland_500.s + Pastures.and.open.nature_500.s + 
+                             Animals_cont.s + Depth.s + bio1.s+Fish+Hydeoperiod_length.s, family = Gamma(link = "log"),
+                           data = model_df)
+
+summary(TP_euromedi_linear_model)
+step(TP_euromedi_linear_model)
+
+
+TP_euromedi_linear_model_selected <- glm(formula = TP ~ Natural_5.s + Cropland_500.s + Pastures.and.open.nature_500.s + 
+    Animals_cont.s + Depth.s + bio1.s + Fish, family = Gamma(link = "log"), 
+    data = model_df)
+
+summary(TP_euromedi_linear_model_selected)
+tab_model(TP_euromedi_linear_model_selected,show.intercept = TRUE,transform = NULL)
+library(boot)
+
+glmfit <- cv.glm(data = model_df, glmfit = TP_euromedi_linear_model_selected,K = 4)
+glmfit$delta
+plot(glmfit)
+
+
+##GLMM TP country
+tp_mixed_euromedi_linear_model <-glmer(formula = TP ~Natural_5.s+ Cropland_500.s +
+                                         Pastures.and.open.nature_500.s + (1|Country) +Fish+Hydeoperiod_length.s+
+                                        Animals_cont.s + Depth.s + bio1.s, family = Gamma(link = "log"), data = model_df)
+summary(tp_mixed_euromedi_linear_model)
+
+stepAIC(tp_mixed_euromedi_linear_model)
+library(MuMIn)
+r.squaredGLMM(tp_mixed_euromedi_linear_model)
+
+step(tp_mixed_euromedi_linear_model)
+
+
+drop1(tp_mixed_euromedi_linear_model, test = "Chisq")
+test<-glmer(formula = TP ~ Cropland_500.s +
+              Pastures.and.open.nature_500.s + (1|Country) +Fish+Hydeoperiod_length.s+
+              Animals_cont.s + Depth.s + bio1.s, family = Gamma(link = "log"), data = model_df)
+test1 <-glmer(formula = TP ~ Cropland_500.s +
+              Pastures.and.open.nature_500.s + (1|Country) +Fish+
+              Animals_cont.s + Depth.s + bio1.s, family = Gamma(link = "log"), data = model_df)
+test2<-glmer(formula = TP ~ Cropland_500.s +
+              Pastures.and.open.nature_500.s + (1|Country) +Fish+
+              Animals_cont.s + Depth.s, family = Gamma(link = "log"), data = model_df)
+summary(test2)
+
+
+tab_model(test2,show.intercept = TRUE,transform = NULL)
+
+test3<-glm(formula = TP ~ Cropland_500.s +
+              Pastures.and.open.nature_500.s +Fish+
+              Animals_cont.s + Depth.s, family = Gamma(link = "log"), data = model_df)
+AIC(test2,test3)
+summary(test2)
+
+test4<-glm(formula = TP ~ Cropland_500.s +
+              Pastures.and.open.nature_500.s + Fish+
+              Animals_cont.s + Depth.s, family = Gamma(link = "log"), data = model_df)
+AIC(test2,test4)
+anova(tp_mixed_euromedi_linear_model_selected,test4,test='LRT')
+
+tp_mixed_euromedi_linear_model_selected <- glmer(formula = TP ~ Cropland_500.s +
+              Pastures.and.open.nature_500.s + (1|Country) +Fish+
+              Animals_cont.s + Depth.s, family = Gamma(link = "log"), data = model_df)
+summary(tp_mixed_euromedi_linear_model_selected)
+tab_model(tp_mixed_euromedi_linear_model_selected,show.intercept = TRUE,transform = NULL)
+
+##GLM TP pondscape
+tp_mixed_euromedi_linear_model <-glmer(formula = TP ~Natural_5.s+ Cropland_500.s +
+                                         Pastures.and.open.nature_500.s + (1|Country)+(1 | Country:Pondscape) +Fish+Hydeoperiod_length.s+
+                                        Animals_cont.s + Depth.s + bio1.s, family = Gamma(link = "log"), data = model_df)
+summary(tp_mixed_euromedi_linear_model)
+
+test1 <- glmer(formula = TP ~Cropland_500.s +
+                                         Pastures.and.open.nature_500.s + (1|Country)+(1 | Country:Pondscape) +Fish+Hydeoperiod_length.s+
+                                        Animals_cont.s + Depth.s + bio1.s, family = Gamma(link = "log"), data = model_df)
+
+test2 <- glmer(formula = TP ~Cropland_500.s +
+                                         Pastures.and.open.nature_500.s + (1|Country)+(1 | Country:Pondscape) +Fish+
+                                        Animals_cont.s + Depth.s + bio1.s, family = Gamma(link = "log"), data = model_df)
+
+
+test3 <- glmer(formula = TP ~Cropland_500.s +
+                                         Pastures.and.open.nature_500.s + (1|Country)+(1 | Country:Pondscape) +Fish+
+                                        Animals_cont.s + Depth.s, family = Gamma(link = "log"), data = model_df)
+summary(test3 )
+test4<-glmer(formula = TP ~Cropland_500.s +
+                                         Pastures.and.open.nature_500.s + (1 | Country:Pondscape) +Fish+
+                                        Animals_cont.s + Depth.s, family = Gamma(link = "log"), data = model_df)
+test5<-glmer(formula = TP ~Cropland_500.s +
+                                         Pastures.and.open.nature_500.s + (1|Country) +Fish+
+                                        Animals_cont.s + Depth.s, family = Gamma(link = "log"), data = model_df)
+test6<-glm(formula = TP ~Cropland_500.s +
+                                         Pastures.and.open.nature_500.s + Fish+
+                                        Animals_cont.s + Depth.s, family = Gamma(link = "log"), data = model_df)
+AIC(tp_mixed_euromedi_linear_model,test1)
+AIC(test1,test2)
+AIC(test2,test3)
+AIC(test3,test4)
+AIC(test3,test5)
+AIC(test3,test6)
+
+anova(test6,test3)
+tp_mixed_euromedi_pond_model_selected <- glmer(formula = TP ~Cropland_500.s +
+                                         Pastures.and.open.nature_500.s + (1|Country)+(1 | Country:Pondscape) +Fish+
+                                        Animals_cont.s + Depth.s, family = Gamma(link = "log"), data = model_df)
+summary(tp_mixed_euromedi_pond_model_selected)
+tab_model(tp_mixed_euromedi_pond_model_selected,show.intercept = TRUE,transform = NULL)
+
+##GLM TP dom_coverage
+tp_mixed_euromedi_dom <-glmer(formula = TP ~Natural_5.s+ Cropland_500.s +
+                                         Pastures.and.open.nature_500.s + (1| dominant_landcover) +Fish+Hydeoperiod_length.s+
+                                        Animals_cont.s + Depth.s + bio1.s, family = Gamma(link = "log"), data = model_df)
+summary(tp_mixed_euromedi_dom)
+test1 <- glmer(formula = TP ~Natural_5.s+ Cropland_500.s +
+                                         Pastures.and.open.nature_500.s + (1| dominant_landcover) +Fish+
+                                        Animals_cont.s + Depth.s + bio1.s, family = Gamma(link = "log"), data = model_df)
+summary(test1)
+test_2<- glm(formula = TP ~Natural_5.s+ Cropland_500.s +
+                                         Pastures.and.open.nature_500.s + Fish+
+                                        Animals_cont.s + Depth.s + bio1.s, family = Gamma(link = "log"), data = model_df)
+
+
+AIC(tp_mixed_euromedi_dom,test1)
+AIC(tp_mixed_euromedi_dom,test2)
+summary(test2)
+
+
+anova(tp_mixed_euromedi_dom,test2)
+
+##GLM TP  altregion 
+tp_mixed_euromedi_alt_model <-glmer(formula = TP ~Natural_5.s+ Cropland_500.s +
+                                         Pastures.and.open.nature_500.s + (1|altregion) +Fish+Hydeoperiod_length.s+
+                                        Animals_cont.s + Depth.s + bio1.s, family = Gamma(link = "log"), data = model_df)
+
+## pondscape:dominant_landcover
+tp_mixed_euromedi_pdom_model <-glmer(formula = TP ~Natural_5.s+ Cropland_500.s +
+                                         Pastures.and.open.nature_500.s + (1|dominant_landcover:Pondscape) +Fish+Hydeoperiod_length.s+
+                                        Animals_cont.s + Depth.s + bio1.s, family = Gamma(link = "log"), data = model_df)
+
+summary(tp_mixed_euromedi_pdom_model)
+test1 <-glmer(formula = TP ~ Cropland_500.s +
+                                         Pastures.and.open.nature_500.s + (1|dominant_landcover:Pondscape) +Fish+Hydeoperiod_length.s+
+                                        Animals_cont.s + Depth.s + bio1.s, family = Gamma(link = "log"), data = model_df)
+test2 <-glmer(formula = TP ~ Cropland_500.s +
+                                         Pastures.and.open.nature_500.s + (1|dominant_landcover:Pondscape) +Fish+
+                                        Animals_cont.s + Depth.s + bio1.s, family = Gamma(link = "log"), data = model_df)
+summary(test2)
+
+test3 <-glm(formula = TP ~ Cropland_500.s +
+                                         Pastures.and.open.nature_500.s +Fish+
+                                        Animals_cont.s + Depth.s + bio1.s, family = Gamma(link = "log"), data = model_df)
+AIC(tp_mixed_euromedi_pdom_model,test1)
+AIC(test1,test2)
+AIC(test3,test2)
+
+anova(test1,tp_mixed_euromedi_pdom_model)
+anova(test2,test3)
+
+tp_mixed_euromedi_pdom_model_selected <- glmer(formula = TP ~ Cropland_500.s +
+                                         Pastures.and.open.nature_500.s + (1|dominant_landcover:Pondscape) +Fish+
+                                        Animals_cont.s + Depth.s + bio1.s, family = Gamma(link = "log"), data = model_df)
+
+summary(tp_mixed_euromedi_pdom_model_selected)
+
+tab_model(tp_mixed_euromedi_pdom_model_selected,show.intercept = TRUE,transform = NULL)
+
+```
+
+
+
+
