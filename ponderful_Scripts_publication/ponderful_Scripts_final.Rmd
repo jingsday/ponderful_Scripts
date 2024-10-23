@@ -66,6 +66,7 @@ shapiro.test(dom_landcover$log_TP)
 
 hist(dom_landcover$TN,main='Distribution of Response Variable TN(n=211)',xlab = 'TN')
 hist(dom_landcover$TP,main='Distribution of Response Variable TP',xlab = 'TP')
+hist(dom_landcover$ECELS)
 ```
 
 ```{r Predictors selection, normalization and standarisation}
@@ -76,20 +77,21 @@ hist(dom_landcover$TP,main='Distribution of Response Variable TP',xlab = 'TP')
    return(result)}
 
 dom_landcover$Hydeoperiod_length.T<-transformar_columna(dom_landcover$Hydeoperiod_length)
+dom_landcover$ECELS.T <-transformar_columna(dom_landcover$ECELS.t)
 
 model_df <- dom_landcover[,c('Pondscape','Country','altregion','X','Y','TN','log_TN',
                              'TP','log_TP','bio1.t','bio7.t','bio5.t','bio12.t',
                              'Hydeoperiod_length.t','Hydeoperiod_length.T','Area.t',
                              'Depth.t','Animals_cont.t', "Aquatic_500.t",   
                              "Cropland_500.t","Forest_500.t","Pastures.and.open.nature_500.t" ,
-                             "Urban_500.t", "Natural_5.t",'dominant_landcover')]
+                             "Urban_500.t", "Natural_5.t",'dominant_landcover','ECELS.T')]
 model_df[,c('bio1.s','bio7.s','bio5.s','bio12.s','Hydeoperiod_length.s',
             'Animals_cont.s','Area.s','Depth.s',"Aquatic_500.s",  
             "Cropland_500.s","Forest_500.s","Pastures.and.open.nature_500.s" ,
-            "Urban_500.s", "Natural_5.s")] <-scale(model_df[,c('bio1.t','bio7.t','bio5.t','bio12.t','Hydeoperiod_length.T',
+            "Urban_500.s", "Natural_5.s",'ECELS.s')] <-scale(model_df[,c('bio1.t','bio7.t','bio5.t','bio12.t','Hydeoperiod_length.T',
                     'Animals_cont.t','Area.t','Depth.t',"Aquatic_500.t",  
                     "Cropland_500.t","Forest_500.t","Pastures.and.open.nature_500.t" ,
-                    "Urban_500.t", "Natural_5.t")], center = TRUE, scale = TRUE)
+                    "Urban_500.t", "Natural_5.t",'ECELS.T')], center = TRUE, scale = TRUE)
 
 model_df <-na.omit(model_df)
 
@@ -111,13 +113,13 @@ model_df <-na.omit(model_df)
 TN_euromedi_model <- glm(log_TN ~ Natural_5.s + Aquatic_500.s + Cropland_500.s +
                             Pastures.and.open.nature_500.s +
                              Urban_500.s + Animals_cont.s + Area.s + Depth.s +
-                             bio1.s+bio7.s+Hydeoperiod_length.s, 
+                             bio1.s+bio7.s+Hydeoperiod_length.s+ECELS.s, 
                            data = model_df)
 summary(TN_euromedi_model)
 step(TN_euromedi_model)
 
-TN_euromedi_model_selected <- glm(formula = log_TN ~ Aquatic_500.s + Cropland_500.s + Pastures.and.open.nature_500.s + 
-    Urban_500.s + Animals_cont.s + Depth.s + bio1.s + bio7.s, 
+TN_euromedi_model_selected <-  glm(formula = log_TN ~ Aquatic_500.s + Cropland_500.s + Pastures.and.open.nature_500.s + 
+    Urban_500.s + Animals_cont.s + Depth.s + bio7.s + ECELS.s, 
     data = model_df)
 summary(TN_euromedi_model_selected)
 # 
@@ -308,7 +310,7 @@ ranef(test3)
 
 ```{r TP model}
 TP_euromedi_linear_model <- glm(TP ~ Natural_5.s+Cropland_500.s + Pastures.and.open.nature_500.s + 
-                             Animals_cont.s + Depth.s + bio1.s+Hydeoperiod_length.s, family = Gamma(link = "log"),
+                             Animals_cont.s + Depth.s + bio1.s+Hydeoperiod_length.s+ECELS.s, family = Gamma(link = "log"),
                            data = model_df)
 
 summary(TP_euromedi_linear_model)
