@@ -188,7 +188,7 @@ cv_results <- cvMixed(TN_euromedi_pond_mixed_model_selected,
                            data = model_df,  fixed.effects = lme4::fixef,
                            package = "lme4")
 print(cv_results)
-# Chec# Chec# Check results
+#Check results
 
 #dominant land coverage 
 TN_euromedi_dom_mixed_model<- lmer(log_TN ~ Natural_5.s + Aquatic_500.s + Cropland_500.s +
@@ -246,6 +246,65 @@ TN_euromedi_altregion_nest_mixed_model_selected <- lmer(log_TN ~ Cropland_500.s 
 summary(TN_euromedi_altregion_nest_mixed_model_selected)
 tab_model(TN_euromedi_altregion_nest_mixed_model_selected,show.intercept = TRUE,transform = NULL)
 
+
+### GLMM models random slopes
+#log_TN ~ fixed effects + (cropland|dominant landcover) + (1|dominant landcover:pondscape)....
+test1 <- lmer(log_TN ~ Natural_5.s + Aquatic_500.s + Cropland_500.s +
+                        Pastures.and.open.nature_500.s +
+                        Urban_500.s + Animals_cont.s + Area.s + Depth.s + Fish + Hydeoperiod_length.s +
+                        bio1.s + bio7.s + 
+                        (1 + Cropland_500.s | Country),
+              data = model_df)#singular
+summary(test1)
+ranef(test1)
+#log_TN ~ fixed effects + (cropland|dominant landcover:pondscape)....
+test1 <- lmer(log_TN ~ Natural_5.s + Aquatic_500.s + Cropland_500.s +
+                        Pastures.and.open.nature_500.s +
+                        Urban_500.s + Animals_cont.s + Area.s + Depth.s + Fish + Hydeoperiod_length.s +
+                        bio1.s + bio7.s + 
+                        (1 + Cropland_500.s | dominant_landcover),
+              data = model_df)
+isSingular(test1)
+
+
+#log_TN ~ fixed effects + (1|dominant landcover:pondscape)....
+test1 <- lmer(log_TN ~ Natural_5.s + Aquatic_500.s + Cropland_500.s +
+                        Pastures.and.open.nature_500.s +
+                        Urban_500.s + Animals_cont.s + Area.s + Depth.s + Fish + Hydeoperiod_length.s +
+                        bio1.s + bio7.s + 
+                        (1 | dominant_landcover:Pondscape),
+              data = model_df)
+summary(test1)
+
+test_n <- lmer(log_TN ~ Cropland_500.s +
+                        Pastures.and.open.nature_500.s +
+                        Urban_500.s + Animals_cont.s + Area.s + Depth.s + Fish + Hydeoperiod_length.s +
+                        bio1.s + bio7.s + 
+                        (1 | dominant_landcover:Pondscape),
+              data = model_df)
+#log_TN ~ fixed effects + (animals|dominant landcover) + (1|dominant landcover:pondscape)....
+test2 <- lmer(log_TN ~ Natural_5.s + Aquatic_500.s + Cropland_500.s +
+                        Pastures.and.open.nature_500.s +
+                        Urban_500.s +  Area.s + Depth.s + Fish + Hydeoperiod_length.s +
+                        bio1.s + bio7.s + (1+Animals_cont.s|dominant_landcover) + (1|dominant_landcover),
+              data = model_df)#singular
+
+#log_TN ~ fixed effects + (animals|dominant landcover:pondscape)....
+test2 <- lmer(log_TN ~ Natural_5.s + Aquatic_500.s + Cropland_500.s +
+                        Pastures.and.open.nature_500.s +
+                        Urban_500.s +  Area.s + Depth.s + Fish + Hydeoperiod_length.s +
+                        bio1.s + bio7.s + (1+Animals_cont.s|dominant_landcover:Pondscape),
+              data = model_df)
+summary(test2)
+
+test3 <-  lmer(log_TN ~ Cropland_500.s +
+                         Depth.s + Animals_cont.s+ (1+Animals_cont.s|dominant_landcover),
+              data = model_df)
+AIC(test2,test3)
+anova(test2,test3)
+summary(test3)
+tab_model(test3,show.intercept = TRUE, transform = NULL)
+ranef(test3)
 
 ```
 
@@ -415,6 +474,58 @@ tp_mixed_euromedi_pdom_model_selected <- glmer(formula = TP ~ Cropland_500.s +
 summary(tp_mixed_euromedi_pdom_model_selected)
 
 tab_model(tp_mixed_euromedi_pdom_model_selected,show.intercept = TRUE,transform = NULL)
+
+#dominant landcover and dominant landcover:pondscape
+tp_mixed_euromedi_pdom2_model <-glmer(formula = TP ~Natural_5.s+ Cropland_500.s +
+                                         Pastures.and.open.nature_500.s +(1|dominant_landcover)+ (1|dominant_landcover:Pondscape) +Fish+Hydeoperiod_length.s+
+                                        Animals_cont.s + Depth.s + bio1.s, family = Gamma(link = "log"), data = model_df)
+
+summary(tp_mixed_euromedi_pdom2_model)
+
+test1 <- glmer(formula = TP ~Natural_5.s+ Cropland_500.s +
+                                         Pastures.and.open.nature_500.s +(1|dominant_landcover)+ (1|dominant_landcover:Pondscape) +Fish+
+                                        Animals_cont.s + Depth.s + bio1.s, family = Gamma(link = "log"), data = model_df)
+AIC(test1, tp_mixed_euromedi_pdom2_model)
+summary(test1)
+test2 <- glmer(formula = TP ~Cropland_500.s +
+                                         Pastures.and.open.nature_500.s +(1|dominant_landcover)+ (1|dominant_landcover:Pondscape) +Fish+
+                                        Animals_cont.s + Depth.s + bio1.s, family = Gamma(link = "log"), data = model_df)
+
+test3 <- glm(formula = TP ~Natural_5.s+ Cropland_500.s +
+                                         Pastures.and.open.nature_500.s +Fish+
+                                        Animals_cont.s + Depth.s + bio1.s, family = Gamma(link = "log"), data = model_df)
+
+test4 <- glmer(formula = TP ~Natural_5.s+ Cropland_500.s +
+                                         Pastures.and.open.nature_500.s +(1|dominant_landcover) +Fish+
+                                        Animals_cont.s + Depth.s + bio1.s, family = Gamma(link = "log"), data = model_df)
+
+
+test5 <- glmer(formula = TP ~Natural_5.s+ Cropland_500.s +
+                                         Pastures.and.open.nature_500.s +(1|dominant_landcover:Pondscape) +Fish+
+                                        Animals_cont.s + Depth.s + bio1.s, family = Gamma(link = "log"), data = model_df)
+
+test6<-glmer(formula = TP ~Cropland_500.s +
+                                         Pastures.and.open.nature_500.s +(1|dominant_landcover:Pondscape) +Fish+
+                                        Animals_cont.s + Depth.s + bio1.s, family = Gamma(link = "log"), data = model_df)
+
+tp_mixed_euromedi_pdom2_model_selected <- glmer(formula = TP ~Cropland_500.s +
+                                         Pastures.and.open.nature_500.s +(1|dominant_landcover:Pondscape) +Fish+
+                                        Animals_cont.s + Depth.s + bio1.s, family = Gamma(link = "log"), data = model_df)
+summary(tp_mixed_euromedi_pdom2_model_selected)
+AIC(test1, tp_mixed_euromedi_pdom2_model)
+AIC(test1, test3)
+AIC(test1,test5)
+AIC(test5,test6)
+anova(test1,test6)
+
+
+tab_model(tp_mixed_euromedi_pdom2_model_selected,show.intercept = TRUE,transform = NULL)
+
+
+summary(test5)
+summary(test6)
+
+
 
 library(lme4)
 library(cv)
