@@ -67,10 +67,52 @@ shapiro.test(dom_landcover$log_TP)
 # columns_with_na <- names(dom_landcover)[na_columns]
 # columns_with_na
 
-
-hist(dom_landcover$TN,main='Distribution of Response Variable TN(n=211)',xlab = 'TN')
-hist(dom_landcover$TP,main='Distribution of Response Variable TP',xlab = 'TP')
 ```
+```{r Two histograms }
+
+
+hist_TN <- ggplot(dom_landcover, aes(x = TN)) + 
+  geom_histogram(binwidth = 0.1, fill = "skyblue", color = "black", alpha = 0.7) + 
+  labs(
+    title = "Distribution of Response Variable TN (n = 211)",
+    x = "Total Nitrogen (TN)",
+    y = "Frequency"
+  ) + 
+  theme_minimal(base_size = 15) + 
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14),
+    axis.title = element_text(size = 14),
+    axis.text = element_text(size = 12),
+    axis.line = element_line(linewidth = 0.5, colour = "black"), 
+    panel.grid.major = element_line(linewidth = 0.5),            
+    panel.grid.minor = element_blank()
+  )
+
+# Save the plot
+ggsave(paste0(outwdir, "TN_distribution_histogram.png"), plot = hist_TN, width = 8, height = 5, dpi = 300)
+
+hist_TP <- ggplot(dom_landcover, aes(x = TP)) + 
+  geom_histogram(binwidth = 0.1, fill = "skyblue", color = "black", alpha = 0.7) + 
+  labs(
+    title = "Distribution of Response Variable TP (n = 211)",
+    x = "Total Nitrogen (TP)",
+    y = "Frequency"
+  ) + 
+  theme_minimal(base_size = 15) + 
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14),
+    axis.title = element_text(size = 14),
+    axis.text = element_text(size = 12),
+    axis.line = element_line(linewidth = 0.5, colour = "black"), 
+    panel.grid.major = element_line(linewidth = 0.5),             
+    panel.grid.minor = element_blank()
+  )
+
+# Save the plot
+ggsave(paste0(outwdir, "TP_distribution_histogram.png"), plot = hist_TP, width = 8, height = 5, dpi = 300)
+```
+
+
 
 ```{r Predictors selection, normalization and standarisation}
 #LU variables standerized already. Method used is as follow
