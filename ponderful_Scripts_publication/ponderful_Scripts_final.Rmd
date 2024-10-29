@@ -193,10 +193,12 @@ summary(TN_euromedi_mixed_2)
 TN_euromedi_mixed_2_selected <-lmer(formula = log_TN ~  Animals_cont.s +  Depth.s+Cropland_500.s+
                                  (1|Country) , data = model_df,na.action = "na.fail") 
 summary(TN_euromedi_mixed_2_selected)
+ranef(TN_euromedi_mixed_2_selected)
 tab_model(TN_euromedi_mixed_2_selected,show.intercept = TRUE,transform = NULL)
 
 anova(TN_euromedi_mixed_1_selected,TN_euromedi_mixed_2_selected)
 ```
+
 ```{r (C) (1|Country:Pondscape) }
 TN_euromedi_mixed_3 <-lmer(formula = log_TN ~  Animals_cont.s + bio7.s + Depth.s+Cropland_500.s+
                                   (1|Country:Pondscape) , data = model_df,na.action = "na.fail") 
@@ -206,6 +208,7 @@ TN_euromedi_mixed_3_selected <-lmer(formula = log_TN ~  Animals_cont.s + Depth.s
                                   (1|Country:Pondscape) , data = model_df,na.action = "na.fail") 
 
 summary(TN_euromedi_mixed_3_selected)
+ranef(TN_euromedi_mixed_3_selected)
 tab_model(TN_euromedi_mixed_3_selected,show.intercept = TRUE,transform = NULL)
 
 anova(TN_euromedi_mixed_1_selected,TN_euromedi_mixed_2_selected,TN_euromedi_mixed_3_selected)
@@ -220,35 +223,88 @@ summary(TN_euromedi_mixed_4)
 TN_euromedi_mixed_4_selected <-lmer(formula = log_TN ~  Animals_cont.s + Depth.s+Cropland_500.s+
                                    (1|dominant_landcover) + (1|dominant_landcover:Pondscape) , data = model_df,na.action = "na.fail") 
 summary(TN_euromedi_mixed_4_selected)
-
+ranef(TN_euromedi_mixed_4_selected)
 tab_model(TN_euromedi_mixed_4_selected,show.intercept = TRUE,transform = NULL)
 
 anova(TN_euromedi_mixed_1_selected,TN_euromedi_mixed_2_selected,TN_euromedi_mixed_3_selected,TN_euromedi_mixed_4_selected)
 
 ```
 
+
+
+
 ```{r (E)  (1|Dominant_landuse)}
 
-TN_euromedi_mixed_5 <-lmer(formula = log_TN ~  Animals_cont.s + bio7.s + Depth.s+Cropland_500.s+
+TN_euromedi_mixed_5 <-lmer(formula = log_TN ~ Natural_5.s + Aquatic_500.s + Cropland_500.s +
+                            Pastures.and.open.nature_500.s +
+                             Urban_500.s + Animals_cont.s + Area.s + Depth.s +
+                             bio1.s+bio7.s+Hydeoperiod_length.s+
                                    (1|dominant_landcover)  , data = model_df,na.action = "na.fail") 
 
 summary(TN_euromedi_mixed_5)
-tab_model(lmer(formula = log_TN ~  Animals_cont.s +Depth.s+Cropland_500.s+
-                                   (1|dominant_landcover)  , data = model_df,na.action = "na.fail"),show.intercept = TRUE,transform = NULL)
+
+TN_euromedi_mixed_5_test <- lmer(formula = log_TN ~  Aquatic_500.s + Cropland_500.s + Animals_cont.s +Depth.s +
+                            bio7.s+(1|dominant_landcover)  , data = model_df,na.action = "na.fail") 
+
+
+tab_model(TN_euromedi_mixed_5_test,show.intercept = TRUE,transform = NULL)
 
 
 ```
 
+```{r}
+TN_random_slope_1 <-lmer(formula = log_TN ~Natural_5.s + Aquatic_500.s + Cropland_500.s +
+                            Pastures.and.open.nature_500.s +
+                             Urban_500.s + Animals_cont.s + Area.s + Depth.s +
+                             bio1.s+bio7.s+Hydeoperiod_length.s+  (1|Country)
+                         +(Cropland_500.s|Country) + (Animals_cont.s|Country) ,
+                         data = model_df,na.action = "na.fail",control =
+                           lmerControl(optimizer = "Nelder_Mead")) 
+summary(TN_random_slope_1)
+
+```
+```{r second attempt}
+TN_random_slope <- lmer(formula = log_TN ~  Animals_cont.s +
+                          Depth.s+Cropland_500.s+ (1|Country) +(Cropland_500.s|Country) + 
+                          (1|Country:Pondscape) , data = model_df,na.action = "na.fail") 
+
+```
+
+```{r second attempt}
+TN_random_slope_2 <-lmer(formula = log_TN ~Natural_5.s + Aquatic_500.s + Cropland_500.s +
+                            Pastures.and.open.nature_500.s +
+                             Urban_500.s + Animals_cont.s + Area.s + Depth.s +
+                             bio1.s+bio7.s+Hydeoperiod_length.s  +(1|dominant_landcover)+ (Cropland_500.s|dominant_landcover) +
+                           (Animals_cont.s|dominant_landcover)+ (1|dominant_landcover:Pondscape) ,
+                         data = model_df,na.action = "na.fail") 
+
+TN_random_slope_2 <-lmer(formula = log_TN ~Natural_5.s + Aquatic_500.s + Cropland_500.s +
+                            Pastures.and.open.nature_500.s +
+                             Urban_500.s + Animals_cont.s + Area.s + Depth.s +
+                             bio1.s+bio7.s+Hydeoperiod_length.s + (1+Cropland_500.s|dominant_landcover) +
+                        (1 + dominant_landcover:Pondscape) ,
+                         data = model_df,na.action = "na.fail") 
+
+summary(TN_random_slope_2)
+
+table(model_df$dominant_landcover,model_df$Cropland_500.s)
+```
+
+
 ```{r (F) (1|Dominant_landuse:Pondscape)}
 
-TN_euromedi_mixed_6 <-lmer(formula = log_TN ~  Animals_cont.s + bio7.s + Depth.s+Cropland_500.s+
-                                  (1|dominant_landcover:Pondscape)  , data = model_df,na.action = "na.fail") 
+TN_euromedi_mixed_6 <-lmer(formula = log_TN ~Natural_5.s + Aquatic_500.s + Cropland_500.s +
+                            Pastures.and.open.nature_500.s +
+                             Urban_500.s + Animals_cont.s + Area.s + Depth.s +
+                             bio1.s+bio7.s+Hydeoperiod_length.s+
+                                  (1+Cropland_500.s|dominant_landcover:Pondscape) , data = model_df,na.action = "na.fail",
+                            control=lmerControl(optimizer = "nloptwrap")) 
 summary(TN_euromedi_mixed_6)
 
-TN_euromedi_mixed_6_selected <- lmer(formula = log_TN ~  Animals_cont.s + Depth.s+Cropland_500.s+
-                                  (1|dominant_landcover:Pondscape)  , data = model_df,na.action = "na.fail") 
+TN_euromedi_mixed_6_selected <- lmer(formula = log_TN ~  Animals_cont.s + Depth.s+Cropland_500.s+bio7.s+
+                                  (1+Animals_cont.s|dominant_landcover:Pondscape)  , data = model_df,na.action = "na.fail") 
 
-tab_model(TN_euromedi_mixed_6_selected,show.intercept = TRUE,transform = NULL)
+tab_model(TN_euromedi_mixed_6,show.intercept = TRUE,transform = NULL)
 
 anova(TN_euromedi_mixed_4_selected,TN_euromedi_mixed_5,TN_euromedi_mixed_6_selected)
 
@@ -282,6 +338,29 @@ TN_euromedi_mixed_9_selected <- lmer(formula = log_TN ~  Animals_cont.s + Depth.
 
 
 ```
+
+```{r}
+model1 <- lmer(log_TN ~Natural_5.s + Aquatic_500.s + 
+                            Pastures.and.open.nature_500.s +
+                             Urban_500.s + Animals_cont.s + Area.s + Depth.s +
+                             bio1.s+bio7.s+Hydeoperiod_length.s +  (1 | Pondscape) + (1 + Animals_cont.s|dominant_landcover),  data = model_df,na.action = "na.fail")
+
+model1 <- lmer(log_TN ~Animals_cont.s  +  (1 | Pondscape) + (1 + Cropland_500.s|Pondscape),  data = model_df,na.action = "na.fail")
+
+model1_selected <- lmer(log_TN ~ Animals_cont.s + Aquatic_500.s + 
+                          (1 | Country:Pondscape) + (1 + Cropland_500.s|Pondscape), data = model_df, na.action = "na.fail")
+
+summary(model1)
+tab_model(model1)
+
+tab_model(model1_selected)
+summary(model1_selected)
+
+
+```
+
+
+
 
 ```{r TP GLMM Section I: (A) Country + Pondscape}
 
@@ -418,15 +497,35 @@ TP_euromedi_mixed_8 <-glmer(formula =TP ~   Animals_cont.s + bio1.s + Cropland_5
 TP_euromedi_mixed_9 <-glmer(formula =TP ~   Animals_cont.s + bio1.s + Cropland_500.s +  Depth.s + Natural_5.s +
                               Pastures.and.open.nature_500.s+(1+Cropland_500.s|dominant_landcover) + (1+Animals_cont.s|dominant_landcover)+ (1|dominant_landcover:Pondscape) , 
                             data = model_df, family = Gamma(link = "log"), na.action = "na.fail")
+
+TP_euromedi_mixed_9_test1 <- glmer(formula =TP ~   Animals_cont.s + bio1.s + Cropland_500.s +  Depth.s + Natural_5.s +
+                              Pastures.and.open.nature_500.s+(1+Cropland_500.s|dominant_landcover) + (1|dominant_landcover:Pondscape) , 
+                            data = model_df, family = Gamma(link = "log"), na.action = "na.fail")
+TP_euromedi_mixed_9_test2 <-glmer(formula =TP ~   Animals_cont.s + bio1.s + Cropland_500.s +  Depth.s + Natural_5.s +
+                              Pastures.and.open.nature_500.s+(1+Cropland_500.s|dominant_landcover) +  (1|dominant_landcover:Pondscape) , 
+                            data = model_df, family = Gamma(link = "log"), na.action = "na.fail")
 ```
 
 ```{r}
 TP_euromedi_mixed_10 <-glmer(formula =TP ~   Animals_cont.s + bio1.s + Cropland_500.s +  Depth.s + Natural_5.s +
-                              Pastures.and.open.nature_500.s+(1+Cropland_500.s|dominant_landcover) + (1+Animals_cont.s|dominant_landcover), 
+                              Pastures.and.open.nature_500.s+(1|dominant_landcover)+( Cropland_500.s|dominant_landcover) + (Animals_cont.s|dominant_landcover), 
                             data = model_df, family = Gamma(link = "log"), na.action = "na.fail")
 summary(TP_euromedi_mixed_10)
+#control = glmerControl(optimizer = "Nelder_Mead")
 
 tab_model(TP_euromedi_mixed_10,transform = NULL, show.intercept = TRUE)
+TP_euromedi_mixed_10_test1 <-glmer(formula =TP ~   Animals_cont.s + bio1.s + Cropland_500.s +  Depth.s + Natural_5.s +
+                              Pastures.and.open.nature_500.s+(1|dominant_landcover)+( Cropland_500.s|dominant_landcover) , 
+                            data = model_df, family = Gamma(link = "log"), na.action = "na.fail")
+summary(TP_euromedi_mixed_10_test1)
+
+TP_euromedi_mixed_10_test2 <-glmer(formula =TP ~   Animals_cont.s + bio1.s + Cropland_500.s +  Depth.s + Natural_5.s +
+                              Pastures.and.open.nature_500.s+(1|dominant_landcover)+ (Animals_cont.s|dominant_landcover), 
+                            data = model_df, family = Gamma(link = "log"), na.action = "na.fail")
+
+anova(TP_euromedi_mixed_10,TP_euromedi_mixed_10_test1)
+
+
 ```
 
 
