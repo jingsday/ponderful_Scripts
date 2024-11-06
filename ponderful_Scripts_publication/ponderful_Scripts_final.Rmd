@@ -153,7 +153,7 @@ TN_euromedi_model_selected <-glm(formula = log_TN ~ Animals_cont.s + bio7.s + Cr
     Depth.s , data = model_df)
 
 summary(TN_euromedi_model_selected)
-tab_model(TN_euromedi_model_selected,show.intercept = TRUE,transform = NULL)
+#tab_model(TN_euromedi_model_selected,show.intercept = TRUE,transform = NULL,file = paste0(outwdir,'TN_glm_tab.doc'))
 
 #cross validation
 glmfit <- cv.glm(data = model_df, glmfit = TN_euromedi_model_selected,K = 5)
@@ -173,15 +173,13 @@ TP_euromedi_linear_model <- glm(TP ~ Natural_5.s+Cropland_500.s + Pastures.and.o
 summary(TP_euromedi_linear_model)
 step(TP_euromedi_linear_model)
 
-model_set<- dredge(TP_euromedi_linear_model,m.min=1,m.max=6)
-# 
-
 
 TP_euromedi_model_selected <-  glm(formula = TP ~ Animals_cont.s + bio1.s + Cropland_500.s + 
     Depth.s + Natural_5.s + Pastures.and.open.nature_500.s , family = Gamma(link = "log"), data = model_df)
 
 summary(TP_euromedi_model_selected)
-tab_model(TP_euromedi_model_selected,show.intercept = TRUE,transform = NULL)
+#tab_model(TP_euromedi_model_selected,show.intercept = TRUE,transform = NULL,file = paste0(outwdir,'TP_glm_tab.doc'))
+
 #cross validation
 TP_euromedi_model_selected
 glmfit <- cv.glm(data = model_df, glmfit = TP_euromedi_model_selected,K = 5)
@@ -190,25 +188,53 @@ glmfit$delta[2]
 
 
 ```
+
 ```{r GLM intercepts plots}
 # Generate visual regression plots for TN and TP models
-plots_TN <- visreg(TN_euromedi_model_selected, gg = TRUE)
-plots_TP <- visreg(TP_euromedi_model_selected, gg = TRUE)
+plots_TN <- visreg(TN_euromedi_model_selected, gg = TRUE,)
+plots_TP <- visreg(TP_euromedi_model_selected, gg = TRUE)+ theme_bw()
 
-# Arrange plots for each model into separate combined plots
-combined_plot_TN <- wrap_plots(plots_TN) + 
+
+plots_TN_minimal <- lapply(plots_TN, function(plot) plot + theme_minimal())
+combined_plot_TN <- wrap_plots(plots_TN_minimal,nrow=2) + 
   plot_annotation(title = "Coefficients of Predictors in TN Model")
 
-combined_plot_TP <- wrap_plots(plots_TP) + 
+plots_TP_minimal <- lapply(plots_TP, function(plot) plot + theme_minimal())
+combined_plot_TP <- wrap_plots(plots_TP_minimal,ncol=3) + 
   plot_annotation(title = "Coefficients of Predictors in TP Model")
 
-# Combine both TN and TP plots into a single layout
-combined_plot <- (combined_plot_TN | combined_plot_TP)
-combined_plot
+combined_plot_TP
 # Save the combined plot as a PNG file
-output_path <- paste0(outwdir, "TN_TP_coefficients_comparison.png")
-ggsave(output_path, plot = combined_plot, width = 12, height = 6, dpi = 300)
+output_path <- paste0(outwdir, "TP_coefficients_comparison.svg")
+#ggsave(output_path, plot = combined_plot_TP, width = 12, height = 6, dpi = 300)
+
+# Save the combined plot as a PNG file
+output_path <- paste0(outwdir, "TN_coefficients_comparison.svg")
+#ggsave(output_path, plot = combined_plot_TN, width = 8, height = 6, dpi = 300)
 ```
+
+
+
+```{r TN GLMM Section I: (A) Country +Pondscape}
+TN_euromedi_mixed_1 <-lmer(formula = log_TN ~  Animals_cont.s + bio7.s + Depth.s+Cropland_500.s+
+                                 (1|Country) + (1|Country:Pondscape) , data = model_df,na.action = "na.fail") 
+summary(TN_euromedi_mixed_1)
+
+
+TN_euromedi_mixed_1_selected <-lmer(formula = log_TN ~  Animals_cont.s +  Depth.s+Cropland_500.s+
+                                 (1|Country) + (1|Country:Pondscape) , data = model_df,na.action = "na.fail") 
+tab_model(TN_euromedi_mixed_1_selected)
+r.squaredGLMM(TN_euromedi_mixed_1_selected)
+
+VarCorr(TN_euromedi_mixed_1_selected)
+rand(TN_euromedi_mixed_1_selected)
+
+```
+
+
+
+
+
 
 
 
@@ -216,8 +242,12 @@ ggsave(output_path, plot = combined_plot, width = 12, height = 6, dpi = 300)
 #When using dredge, it only remove vars of fixed effect. AIC and anova should be used when compare 
 
 #GLMM random slope without Pondscape dom
-TN_euromedi_mixed_1 <-lmer(formula = log_TN ~  Animals_cont.s + bio7.s + Depth.s+Cropland_500.s+
+TN_euromedi_mixed_1 <-lmer(formula = log_TN ~  Natural_5.s + Aquatic_500.s + Cropland_500.s +
+                            Pastures.and.open.nature_500.s +
+                             Urban_500.s + Animals_cont.s + Area.s + Depth.s +
+                             bio1.s+bio7.s+Hydeoperiod_length.s+
                                  (1|Country) + (1|Country:Pondscape) , data = model_df,na.action = "na.fail") 
+
 summary(TN_euromedi_mixed_1)
 
 TN_euromedi_mixed_1_selected <-lmer(formula = log_TN ~  Animals_cont.s +  Depth.s+Cropland_500.s+
@@ -231,14 +261,6 @@ dotplot(ranef(TN_euromedi_mixed_1_selected))
 
 shapiro.test(residuals(TN_euromedi_mixed_1_selected))
 
-################################dredge selected
-model_set<- dredge(TN_euromedi_mixed_1)
-get.models(model_set, 1)[[1]]
-
-TN_euromedi_dredge_mixed_country_pds <- lmer(formula = log_TN ~  Animals_cont.s + (1|Country) + (1|Country:Pondscape) , data = model_df,na.action = "na.fail") 
-dotplot(ranef(TN_euromedi_dredge_mixed_country_pds))
-tab_model(TN_euromedi_dredge_mixed_country_pds,show.intercept = TRUE,transform = NULL)
-################################dredge selected
 
 #random effect comparison
 test1 <-lmer(formula = log_TN ~  Animals_cont.s + bio7.s + Depth.s+Cropland_500.s+
@@ -643,6 +665,8 @@ TN_euromedi_mixed_8 <- lmer(formula = log_TN ~Natural_5.s +
 
 TN_euromedi_mixed_8_selected <- lmer(formula = log_TN ~ 
                                                                      (1+Cropland_500.s|Country)+Animals_cont.s+(1|Pondscape), data = model_df,na.action = "na.fail")#singular
+tab_model(TN_euromedi_mixed_8_selected)
+
 
 summary(TN_euromedi_mixed_8_selected)
 tab_model(TN_euromedi_mixed_8)
