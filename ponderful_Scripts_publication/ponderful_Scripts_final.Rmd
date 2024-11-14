@@ -29,47 +29,47 @@ library(lattice)
 
 ```{r Loading dataset and preparation}
 outwdir <- '/Users/lidiayung/PhD_project/project_PONDERFUL/ponderful_Scripts/ponderful_OUTPUT/'
-dom_landcover <- read.csv('~/PhD_project/project_PONDERFUL/ponderful_DATA/ponderful_DATA_updated/dom_landcover.csv')
+#dom_landcover <- read.csv('~/PhD_project/project_PONDERFUL/ponderful_DATA/ponderful_DATA_updated/dom_landcover.csv')
 
-
+dom_landcover_nov <- read.csv('~/PhD_project/project_PONDERFUL/ponderful_DATA/ponderful_DATA_updated/PhyChe_XY_landcover_nov.txt')
 #Factors
 ##Country as factors
-dom_landcover$Country <- as.factor(dom_landcover$Country)
-levels(dom_landcover$Country)
+dom_landcover_nov$Country <- as.factor(dom_landcover_nov$Country)
+levels(dom_landcover_nov$Country)
 
 ##Alternative categories
 ## Bio climatic regions
-dom_landcover$altregion <- 'Atlantic'
-dom_landcover[dom_landcover$Country == 'Spain' | dom_landcover$Country == 'Turkey', "altregion"] <- 'Mediterranean'
-dom_landcover[dom_landcover$Country == 'Belgium' | dom_landcover$Country == 'Germany'
-           | dom_landcover$Country == 'Switzerland', "altregion"] <- 'centralEU'
-dom_landcover[dom_landcover$Country == 'Turkey', "altregion"] <- 'Turkey'
-#dom_landcover[dom_landcover$Country == 'Uruguay',]$altregion <- 'Uruguay'
+dom_landcover_nov$altregion <- 'Atlantic'
+dom_landcover_nov[dom_landcover_nov$Country == 'Spain' | dom_landcover_nov$Country == 'Turkey', "altregion"] <- 'Mediterranean'
+dom_landcover_nov[dom_landcover_nov$Country == 'Belgium' | dom_landcover_nov$Country == 'Germany'
+           | dom_landcover_nov$Country == 'Switzerland', "altregion"] <- 'centralEU'
+dom_landcover_nov[dom_landcover_nov$Country == 'Turkey', "altregion"] <- 'Turkey'
+#dom_landcover_nov[dom_landcover_nov$Country == 'Uruguay',]$altregion <- 'Uruguay'
 
 ##Factors and transformation 
-dom_landcover$altregion <- as.factor(dom_landcover$altregion)
-levels(dom_landcover$altregion)
+dom_landcover_nov$altregion <- as.factor(dom_landcover_nov$altregion)
+levels(dom_landcover_nov$altregion)
 
 #Adding log_TN (and log_TP)
-dom_landcover$log_TN <- log(dom_landcover$TN,base=10)
-hist(dom_landcover$log_TN)
-shapiro.test(dom_landcover$log_TN)
+dom_landcover_nov$log_TN <- log(dom_landcover_nov$TN,base=10)
+hist(dom_landcover_nov$log_TN)
+shapiro.test(dom_landcover_nov$log_TN)
 
-dom_landcover$log_TP <- log(dom_landcover$TP,base=10)
-hist(dom_landcover$log_TP)
-shapiro.test(dom_landcover$log_TP)
+dom_landcover_nov$log_TP <- log(dom_landcover_nov$TP,base=10)
+hist(dom_landcover_nov$log_TP)
+shapiro.test(dom_landcover_nov$log_TP)
 
 
 # # Check which columns contain NA values
-# na_columns <- sapply(dom_landcover, function(x) any(is.na(x)))
+# na_columns <- sapply(dom_landcover_nov, function(x) any(is.na(x)))
 # 
 # # Display the names of columns that contain NA values
-# columns_with_na <- names(dom_landcover)[na_columns]
+# columns_with_na <- names(dom_landcover_nov)[na_columns]
 # columns_with_na
 
 ```
 ```{r Two histograms }
-hist_TN <- ggplot(dom_landcover, aes(x = TN)) + 
+hist_TN <- ggplot(dom_landcover_nov, aes(x = TN)) + 
   geom_histogram(binwidth = 0.1, fill = "skyblue", color = "black", alpha = 0.7) + 
   labs(
     title = "Distribution of Response Variable TN (n = 211)",
@@ -89,7 +89,7 @@ hist_TN <- ggplot(dom_landcover, aes(x = TN)) +
 # Save the plot
 # ggsave(paste0(outwdir, "TN_distribution_histogram.png"), plot = hist_TN, width = 8, height = 5, dpi = 300)
 
-hist_TP <- ggplot(dom_landcover, aes(x = TP)) + 
+hist_TP <- ggplot(dom_landcover_nov, aes(x = TP)) + 
   geom_histogram(binwidth = 0.1, fill = "skyblue", color = "black", alpha = 0.7) + 
   labs(
     title = "Distribution of Response Variable TP (n = 211)",
@@ -120,14 +120,15 @@ transformar_columna <- function(x) {
   result <- ifelse(!is.na(x), qnorm(perc), NA)  # Transformar los percentiles a la distribución normal, manteniendo los NA
   return(result)}
 
-dom_landcover$Hydeoperiod_length.T<-transformar_columna(dom_landcover$Hydeoperiod_length)
+dom_landcover_nov$Hydeoperiod_length.T<-transformar_columna(dom_landcover_nov$Hydeoperiod_length)
 
-model_df <- dom_landcover[,c('Pondscape','Country','altregion','X','Y','TN','log_TN',
+model_df <- dom_landcover_nov[,c('Pondscape','Country','altregion','X','Y','TN','log_TN',
                              'TP','log_TP','bio1.t','bio7.t','bio5.t','bio12.t',
                              'Hydeoperiod_length.t','Hydeoperiod_length.T','Area.t',
                              'Depth.t','Animals_cont.t', "Aquatic_500.t",   
                              "Cropland_500.t","Forest_500.t","Pastures.and.open.nature_500.t" ,
                              "Urban_500.t", "Natural_5.t",'dominant_landcover')]
+
 model_df[,c('bio1.s','bio7.s','bio5.s','bio12.s','Hydeoperiod_length.s',
             'Animals_cont.s','Area.s','Depth.s',"Aquatic_500.s",  
             "Cropland_500.s","Forest_500.s","Pastures.and.open.nature_500.s" ,
@@ -181,7 +182,7 @@ screen_corr <- function(country, threshold = 0.6) {
   return(result)
 }
 
-high_correlations <- screen_corr(country = "Switzerland")
+high_correlations <- screen_corr(country = "Uruguay")
 high_correlations
 ```
 
@@ -194,6 +195,9 @@ TN_euromedi_model <- glm(log_TN ~ Natural_5.s + Aquatic_500.s + Cropland_500.s +
                            data = model_df)
 summary(TN_euromedi_model)
 step(TN_euromedi_model)
+
+tab_model( glm(formula = log_TN ~ Cropland_500.s + Depth.s + 
+    bio12.s, data = model_df),transform=NULL,show.intercept = TRUE)
 
 tab_model(glm(formula = log_TN ~ Natural_5.s + Aquatic_500.s + Cropland_500.s + 
     Urban_500.s + Depth.s + bio12.s, data = model_df),transform=NULL,show.intercept = TRUE)
@@ -211,7 +215,8 @@ summary(TN_euromedi_model_selected)
 #tab_model(TN_euromedi_model_selected,show.intercept = TRUE,transform = NULL,file = paste0(outwdir,'TN_glm_tab.doc'))
 
 #cross validation
-glmfit <- cv.glm(data = model_df, glmfit = TN_euromedi_model_selected,K = 5)
+glmfit <- cv.glm(data = model_df, glmfit = glm(formula = log_TN ~ Cropland_500.s + Depth.s + 
+    bio12.s, data = model_df),K = 5)
 glmfit$delta[2]
 tab_model(TN_euromedi_model_selected,transform=NULL,show.intercept = TRUE)
 
@@ -221,12 +226,19 @@ shapiro.test(residuals(TN_euromedi_model_selected))
 
 
 ```{r TP GLM model}
-TP_euromedi_linear_model <- glm(TP ~ Natural_5.s+Cropland_500.s + Pastures.and.open.nature_500.s + 
-                             Animals_cont.s + Depth.s + bio1.s+bio7.s+bio12.s, family = Gamma(link = "log"),
+TP_euromedi_linear_model <- glm(TP ~ Natural_5.s + Aquatic_500.s + Cropland_500.s +
+                            Pastures.and.open.nature_500.s +
+                             Urban_500.s + Animals_cont.s + Area.s + Depth.s +
+                             bio1.s+bio7.t+bio12.s,, family = Gamma(link = "log"),
                            data = model_df)
 
 summary(TP_euromedi_linear_model)
 step(TP_euromedi_linear_model)
+tab_model(glm(formula = TP ~ Natural_5.s + Cropland_500.s + Pastures.and.open.nature_500.s + 
+    Animals_cont.s + Depth.s + bio1.s + bio12.s, family = Gamma(link = "log"), 
+    data = model_df),show.intercept = TRUE,transform = NULL)
+
+
 test <-  glm(formula = TP ~ Natural_5.s + Cropland_500.s + Pastures.and.open.nature_500.s + 
     Animals_cont.s + Depth.s + bio1.s + bio12.s, family = Gamma(link = "log"), 
     data = model_df)
@@ -240,7 +252,9 @@ summary(TP_euromedi_model_selected)
 
 #cross validation
 TP_euromedi_model_selected
-glmfit <- cv.glm(data = model_df, glmfit = TP_euromedi_model_selected,K = 5)
+glmfit <- cv.glm(data = model_df, glmfit = glm(formula = TP ~ Natural_5.s + Cropland_500.s + Pastures.and.open.nature_500.s + 
+    Animals_cont.s + Depth.s + bio1.s + bio12.s, family = Gamma(link = "log"), 
+    data = model_df),K = 5)
 glmfit$delta[2]
 tab_model(TP_euromedi_model_selected)
 
@@ -280,8 +294,10 @@ tp_glm_analysis <- function(country, K) {
   df <- model_df[model_df$Country == country, ]
   
   # Step 2: Fit the initial GLM model
-  initial_model <- glm(formula = TP~ Animals_cont.s + bio1.s + Cropland_500.s + Depth.s + 
-  Natural_5.s + Pastures.and.open.nature_500.s, 
+  initial_model <- glm(formula = TP~ Natural_5.s + Aquatic_500.s + Cropland_500.s +
+                            Pastures.and.open.nature_500.s +
+                             Urban_500.s + Animals_cont.s +  Depth.s +
+                          bio7.t, #bio1.s+bio7.t+bio12.s+Area.s +
                        family = Gamma(link = "log"), 
                        data = df)
   
@@ -320,7 +336,10 @@ tp_belgium_results <- tp_glm_analysis(
 tab_model(tp_belgium_results$selected_model,transform = NULL,show.intercept = TRUE)
 tp_belgium_results$cv_delta # overfitting 9.921005 
 
+tp_belgium_sig_model <- glm(formula = TP ~ Aquatic_500.s + Urban_500.s + Animals_cont.s + 
+    Depth.s + bio1.s, family = Gamma(link = "log"), data = model_df[model_df$Country=='Belgium',])
 
+summary(tp_belgium_sig_model)
 ```
 
 
@@ -329,6 +348,7 @@ tp_belgium_results$cv_delta # overfitting 9.921005
 tp_Germany_results <- tp_glm_analysis(
                             country = "Germany", 
                             K = 5)
+tp_germany
 tab_model(tp_Germany_results$selected_model,transform = NULL,show.intercept = TRUE)
 tp_Germany_results$cv_delta
 ```
@@ -405,7 +425,7 @@ tn_glm_analysis <- function(country, K) {
   initial_model <- glm(formula = log_TN~ Natural_5.s + Aquatic_500.s + Cropland_500.s +
                             Pastures.and.open.nature_500.s +
                              Urban_500.s + Animals_cont.s + Area.s + Depth.s +
-                             bio1.s+bio7.s, 
+                             bio1.s+bio7.t+bio12.s, 
                        data = df)
   
   print(summary(initial_model))
@@ -598,6 +618,7 @@ VarCorr(TP_euromedi_mixed_4_selected) %>%
   mutate(icc=vcov/sum(vcov)) 
 
 ```
+
 ```{r TP random slopes Animal/cropland selection}
 
 TP_euromedi_rs_crop <-glmer(formula =TP ~   bio1.s + Cropland_500.s +  Depth.s + Natural_5.s+Animals_cont.s+
