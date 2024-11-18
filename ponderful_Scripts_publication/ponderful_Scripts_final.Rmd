@@ -7,9 +7,10 @@ output: html_document
 
 ```{r setup, include=FALSE}
 #summary doc https://docs.google.com/document/d/1iPeJf2U94LXMerQuQTlrKJuTU8Uz_uQ9Ikz052mYez0/edit?tab=t.0
+#model excel https://docs.google.com/spreadsheets/d/1cJgeAcHa73B_hwe3v5gHxuk93ZFG8E9uAewxKsnfIPk/edit?gid=0#gid=0
 knitr::opts_chunk$set(include = FALSE)
+#mgcv gam
 library(dplyr)
-library(mgcv)
 library(ggplot2)
 library(nlme)
 library(fitdistrplus)
@@ -198,7 +199,7 @@ summary(TN_full_model)
 step(TN_full_model)
 
 #sig
-TN_full_model<- glm(formula = log_TN ~ Cropland_500.s + Depth.s + 
+TN_full_model<- glm(formula = log_TN ~ Cropland_500.s + Depth.s +
     bio12.s, data = model_df)
 tab_model(TN_full_model,transform=NULL,show.intercept = TRUE)
 summary(TN_full_model)
@@ -284,9 +285,8 @@ tab_model(TP_euromedi_model_selected)
 
 ```{r GLM intercepts plots}
 # Generate visual regression plots for TN and TP models
-plots_TN <- visreg(TN_euromedi_model_selected, gg = TRUE,)
-plots_TP <- visreg(TP_euromedi_model_selected, gg = TRUE)+ theme_bw()
-
+plots_TN <- visreg(TP_full_model, gg = TRUE,)
+plots_TP <- visreg(TP_full_model, gg = TRUE)
 
 plots_TN_minimal <- lapply(plots_TN, function(plot) plot + theme_minimal())
 combined_plot_TN <- wrap_plots(plots_TN_minimal,nrow=2) + 
@@ -296,7 +296,7 @@ plots_TP_minimal <- lapply(plots_TP, function(plot) plot + theme_minimal())
 combined_plot_TP <- wrap_plots(plots_TP_minimal,ncol=3) + 
   plot_annotation(title = "Coefficients of Predictors in TP Model")
 
-combined_plot_TP
+combined_plot_TN
 # Save the combined plot as a PNG file
 output_path <- paste0(outwdir, "TP_coefficients_comparison.svg")
 #ggsave(output_path, plot = combined_plot_TP, width = 12, height = 6, dpi = 300)
@@ -319,10 +319,10 @@ tp_glm_analysis <- function(country, K) {
   df <- model_df[model_df$Country == country, ]
   
   # Step 2: Fit the initial GLM model
-  initial_model <- glm(formula = TP~ Natural_5.s + Aquatic_500.s + Cropland_500.s +
+  initial_model <- glm(formula = TP~ Natural_5.s + Aquatic_500.s + 
                             Pastures.and.open.nature_500.s +
                              Urban_500.s + Animals_cont.s + Area.s + Depth.s +
-                             bio7.t+bio12.s,
+                             bio1.t,
                        family = Gamma(link = "log"),
                        data = df)
   
@@ -441,7 +441,17 @@ tp_switzerland_results$selected_model
 
 
 ```
+```{r Uru}
+#r2 0.504
+tp_Uruguay_results <- tp_glm_analysis(
+                            country = "Uruguay", 
+                            K = 5)
+tab_model(tp_switzerland_results$selected_model,transform = NULL,show.intercept = TRUE)
+tp_switzerland_results$cv_delta
+tp_switzerland_results$selected_model
 
+
+```
 
 ```{r}
 
@@ -457,9 +467,7 @@ tn_glm_analysis <- function(country, K) {
   
   # Step 2: Fit the initial GLM model
   initial_model <- glm(formula = log_TN~ Natural_5.s + Aquatic_500.s + Cropland_500.s +
-                            Pastures.and.open.nature_500.s +
-                             Urban_500.s + Animals_cont.s + Area.s + Depth.s +
-                             bio7.t+bio12.s,
+                             Urban_500.s + Animals_cont.s + Area.s + Depth.s + bio1.s+bio12.s,
                        data = df)
   
   print(summary(initial_model))
@@ -562,6 +570,22 @@ tn_denmark_results <- tn_glm_analysis(
 
 tab_model(tn_denmark_results$selected_model,transform = NULL,show.intercept = TRUE)
 
+```
+
+```{r Uru}
+#r2 0.358
+tn_Uruguay_results <- tn_glm_analysis(
+                            country = "Uruguay", 
+                            K = 5)
+
+
+tab_model(tn_Uruguay_results$selected_model,transform = NULL,show.intercept = TRUE)
+tn_Uruguay_results$cv_delta # overfitting 9.921005 
+
+tp_Uruguay_sig_model <- glm(formula = TP ~ Natural_5.s + Cropland_500.s   + Animals_cont.s + 
+    Area.s + bio1.s, family = Gamma(link = "log"), data = model_df[model_df$Country=='Uruguay',])
+
+summary(tp_Uruguay_sig_model)
 ```
 
 
