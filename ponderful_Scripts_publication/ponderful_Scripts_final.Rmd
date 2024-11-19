@@ -170,14 +170,20 @@ pairs.panels(cor(model_df[,c('bio1.s','bio7.s','bio12.s',
 ```
 ```{r corr per region}
 # Define the function
-model_df$Pastures.and.open.nature_500.s
+
 screen_corr <- function(country, threshold = 0.5) {
   # Subset data for the specific country
   df <- model_df[model_df$Country == country, ]
   #'bio12.s','Cropland_500.s','Aquatic_500.s',
                    #'Animals_cont.s','Depth.s','bio7.s'
   # Select specified variables
-  selected_vars <- df[, c('Cropland_500.s','bio12.s','bio7.s')]
+  #TN vars
+  # df[, c('Natural_5.s','Pastures.and.open.nature_500.s',
+  #                         'Cropland_500.s','bio12.s','bio1.s','Animals_cont.s','Depth.s')]
+  #TP vars
+  selected_vars <- df[, c('Natural_5.s','Pastures.and.open.nature_500.s',
+                          'Cropland_500.s','bio12.s','bio1.s','Animals_cont.s','Depth.s')]
+  #TP vars
   
   # Calculate the correlation matrix
   cor_matrix <- cor(selected_vars, use = "complete.obs")
@@ -193,7 +199,7 @@ screen_corr <- function(country, threshold = 0.5) {
   return(result)
 }
 
-high_correlations <- screen_corr(country = "Turkey")
+high_correlations <- screen_corr(country = "Belgium")
 high_correlations
 ```
 
@@ -367,7 +373,9 @@ min(model_df[model_df$Country=='Belgium',]$TP)
 tp_belgium_results <- tp_glm_analysis(
                             country = "Belgium", 
                             K = 5)
+
 model_df$Pastures.and.open.nature_500.s
+
 tab_model(tp_belgium_results$selected_model,transform = NULL,show.intercept = TRUE)
 summary(tp_belgium_results$selected_model)
 tp_belgium_results$cv_delta # overfitting 9.921005 
