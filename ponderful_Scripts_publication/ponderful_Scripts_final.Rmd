@@ -142,36 +142,31 @@ model_df <-na.omit(model_df)
 ```
 
 ```{r correlation matrix}
-corrplot(cor(model_df[,c('bio1.t','bio7.t','bio5.t','bio12.t','Hydeoperiod_length.T',
-                    'Animals_cont.t','Area.t','Depth.t',"Aquatic_500.t",  
-                    "Cropland_500.t","Forest_500.t","Pastures.and.open.nature_500.t" ,
-                    "Urban_500.t", "Natural_5.t")]), type = "upper", order = "hclust",tl.col = "black", tl.srt = 45, )
+corrplot(cor(model_df[model_df$Country == 'Turkey', ][,c('TP','bio1.s','bio7.s','bio5.s','bio12.s','Hydeoperiod_length.s',
+                    'Animals_cont.s','Area.s','Depth.s',"Aquatic_500.s",  
+                    "Cropland_500.s","Forest_500.s","Pastures.and.open.nature_500.s" ,
+                    "Urban_500.s", "Natural_5.s")]), type = "upper", order = "hclust",tl.col = "black", tl.srt = 45, )
 
 
 
 #selected vars TN 
-round(cor(model_df[,c('bio1.t','bio7.t','bio12.t',
-                    'Animals_cont.t','Area.t','Depth.t',"Aquatic_500.t",  
-                    "Cropland_500.t","Pastures.and.open.nature_500.t" ,
-                    "Urban_500.t", "Natural_5.t")]),2)
+round(cor(model_df[model_df$Country == 'Spain', ][,c('TP','Hydeoperiod_length.s',
+                    'Animals_cont.s','Area.s','Depth.s',"Aquatic_500.s",  
+                    "Cropland_500.s","Forest_500.s","Pastures.and.open.nature_500.s" ,
+                    "Urban_500.s", "Natural_5.s")]),2)
 
-corrplot(cor(model_df[,c('bio1.s','bio7.s','bio12.s',
-                    'Animals_cont.s','Area.s','Depth.s',"Aquatic_500.s",
+corrplot(cor(model_df[model_df$Country == 'Belgium', ][,c('TP','bio1.s','bio12.s',
+                    'Animals_cont.s','Depth.s',
                     "Cropland_500.s","Pastures.and.open.nature_500.s" ,
-                    "Urban_500.s", "Natural_5.s")]), type = "upper", order = "hclust",tl.col = "black", tl.srt = 45 )
+                   "Natural_5.s")]), type = "upper", order = "hclust",tl.col = "black", tl.srt = 45 )
 
-library(psych) 
-pairs.panels(cor(model_df[,c('bio1.s','bio7.s','bio12.s',
-                    'Animals_cont.s','Area.s','Depth.s',"Aquatic_500.s",
-                    "Cropland_500.s","Pastures.and.open.nature_500.s" ,
-                    "Urban_500.s", "Natural_5.s")]))
 
 
 ```
 ```{r corr per region}
 # Define the function
 
-screen_corr <- function(country, threshold = 0.5) {
+screen_corr <- function(country, threshold = 0.6) {
   # Subset data for the specific country
   df <- model_df[model_df$Country == country, ]
   #'bio12.s','Cropland_500.s','Aquatic_500.s',
@@ -183,7 +178,9 @@ screen_corr <- function(country, threshold = 0.5) {
   #TP vars
   selected_vars <- df[, c('Natural_5.s','Pastures.and.open.nature_500.s',
                           'Cropland_500.s','bio12.s','bio1.s','Animals_cont.s','Depth.s')]
-  #TP vars
+  # selected_vars <- df[, c('TP','Natural_5.s', 'Cropland_500.s','Animals_cont.s','Depth.s',
+  #   'bio1.s','bio12.s')]
+  
   
   # Calculate the correlation matrix
   cor_matrix <- cor(selected_vars, use = "complete.obs")
@@ -335,15 +332,14 @@ tp_glm_analysis <- function(country, K) {
   df <- model_df[model_df$Country == country, ]
   
   # Step 2: Fit the initial GLM model
-  initial_model <- glm(formula = TP~   Natural_5.s +Cropland_500.s +
-                            Pastures.and.open.nature_500.s +
-                             Animals_cont.s +  Depth.s,
+  initial_model <- glm(formula = TP~   Natural_5.s+Pastures.and.open.nature_500.s +Cropland_500.s+Animals_cont.s +
+                         Depth.s+bio1.s+bio12.s,
                        family = Gamma(link = "log"),
                        data = df)
   
   print(summary(initial_model))
   
-  selected_model <- stepAIC(initial_model, trace = FALSE,)
+  selected_model <- stepAIC(initial_model, trace = FALSE)
   #selected_model <- step(initial_model, direction = "both", k = log(nrow(df)))
   # Print summary of the stepAIC model
   print(summary(selected_model))
@@ -367,6 +363,27 @@ tp_glm_analysis <- function(country, K) {
 
 ```
 
+```{r Denmark}
+tp_denmark_results <- tp_glm_analysis(
+                            country = "Denmark", 
+                            K = 5)
+tab_model(tp_denmark_results$selected_model,transform = NULL,show.intercept = TRUE)
+tp_denmark_results$cv_delta
+```
+
+```{r Turkey}
+tp_turkey_results <- tp_glm_analysis(
+                            country = "Turkey", 
+                            K = 5)
+tab_model(tp_turkey_results$selected_model,transform = NULL,show.intercept = TRUE)
+
+tp_turkey_results$cv_delta
+tp_turkey_results$selected_mode
+
+df <-model_df[model_df$Country =="Turkey",]
+
+```
+
 ```{r TP Belgium}
 #Overfitting problem
 min(model_df[model_df$Country=='Belgium',]$TP)
@@ -374,7 +391,6 @@ tp_belgium_results <- tp_glm_analysis(
                             country = "Belgium", 
                             K = 5)
 
-model_df$Pastures.and.open.nature_500.s
 
 tab_model(tp_belgium_results$selected_model,transform = NULL,show.intercept = TRUE)
 summary(tp_belgium_results$selected_model)
@@ -388,42 +404,15 @@ check<- cv.glm(tp_belgium_sig_model,data = model_df[model_df$Country=='Belgium',
 check$delta[2]
 tp_belgium_test <- glm(formula = TP ~ Pastures.and.open.nature_500.s+Animals_cont.s + Depth.s, family = Gamma(link = "log"), 
     data = model_df[model_df$Country == "Belgium", ])
-
-
-summary(tp_belgium_test)
-tab_model(tp_belgium_sig_model,transform = NULL,show.intercept = TRUE)
-tp_belgium_test
-
-df <- model_df[model_df$Country =='Belgium',]
-glmnet()
-check <-cv.glm(data = model_df[model_df$Country == "Belgium", ], glmfit = tp_belgium_test, K = 5)
-check$delta[2]
-tab_model(tp_belgium_test,transform = NULL,show.intercept = TRUE)
-
-hist(model_df[model_df$Country =='Belgium',]$TP)
-model_df$Pastures.and.open.nature_500.s
-library(MASS)
-
-stepAIC(glm(formula = TP ~ Natural_5.s +Cropland_500.s+  Animals_cont.s + Pastures.and.open.nature_500.s+
-    Depth.s + bio1.s+bio12.s, family = Gamma(link = "log"), data = model_df[model_df$Country=='Belgium',]), direction = "both", k = log(30))
-
-
 #Using k = log(n) applies the Bayesian Information Criterion (BIC), which penalizes model complexity more than AIC.
 ```
+
 ```{r Spain}
 tp_spain_results <- tp_glm_analysis(
                             country = "Spain", 
                             K = 5)
 tab_model(tp_spain_results$selected_model,transform = NULL,show.intercept = TRUE)
 tp_spain_results$cv_delta
-tp_spain_results_test <- glm(formula = TP~  Natural_5.s +  Cropland_500.s +
-                            Pastures.and.open.nature_500.s +
-                             Animals_cont.s +  Depth.s +bio1.s+bio12.s,
-                       family = Gamma(link = "log"),
-                       data = model_df[model_df$Country=='Spain',])
-tab_model(tp_spain_results_test,transform = NULL,show.intercept = TRUE)
-
-
 ```
 
 ```{r UK}
@@ -451,41 +440,9 @@ tp_Germany_results$cv_delta
 
 
 
-```{r Denmark}
-tp_denmark_results <- tp_glm_analysis(
-                            country = "Denmark", 
-                            K = 5)
-tab_model(tp_denmark_results$selected_model,transform = NULL,show.intercept = TRUE)
-
-cv.glm(glm(formula = TP ~ Animals_cont.s + bio1.s + Cropland_500.s + 
-    Natural_5.s, family = Gamma(link = "log")),)
 
 
 
-tp_denmark_results$cv_delta
-```
-
-```{r Turkey}
-tp_turkey_results <- tp_glm_analysis(
-                            country = "Turkey", 
-                            K = 5)
-tab_model(tp_turkey_results$selected_model,transform = NULL,show.intercept = TRUE)
-tp_turkey_results$cv_delta
-tp_turkey_results$selected_mode
-model_df$Pastures.and.open.nature_500.s
-df <-model_df[model_df$Country =="Turkey",]
-
-#
-test <- glm(formula = TP ~    Depth.s, family = Gamma(link = "log"), 
-    data = df)
-
-test <- glm(formula = TP ~   Natural_5.s     +Pastures.and.open.nature_500.s+Animals_cont.s+bio7.s, family = Gamma(link = "log"), 
-    data = df)
-
-tab_model(test,transform = NULL,show.intercept = TRUE)
-check <- cv.glm(test,data=df)
-check$delta[2]
-```
 
 
 ```{r Switzerland}
@@ -554,6 +511,15 @@ tn_glm_analysis <- function(country, K) {
   ))
 }
 ```
+```{r Denmark}
+tn_denmark_results <- tn_glm_analysis(
+                            country = "Denmark", 
+                            K = 5)
+
+tab_model(tn_denmark_results$selected_model,transform = NULL,show.intercept = TRUE)
+model <- glm(formula = log_TN~ Cropland_500.s+Animals_cont.s +Depth.s, data =  model_df[model_df$Country == 'Denmark', ])
+tab_model(model,transform = NULL,show.intercept = TRUE)
+```
 
 ```{r TN Germany}
 tn_Germany_results <- tn_glm_analysis(
@@ -563,10 +529,11 @@ tn_Germany_results <- tn_glm_analysis(
 tab_model(tn_Germany_results$selected_model,transform = NULL,show.intercept = TRUE)
 tn_Germany_results$cv_delta
 
+
+
 ```
 
 ```{r TN Belgium}
-#good r2 0.386
 tn_belgium_results <- tn_glm_analysis(
                             country = "Belgium", 
                             K = 5)
@@ -577,7 +544,6 @@ tn_belgium_results$cv_delta
 ```
 
 ```{r TN Germany}
-#good r2 0.462
 tn_germany_results <- tn_glm_analysis(
                             country = "Germany", 
                             K = 5)
@@ -588,13 +554,15 @@ tn_belgium_results$cv_delta
 ```
 
 ```{r Spain}
-#0.518
 tn_spain_results <- tn_glm_analysis(
                             country = "Spain", 
                             K = 5)
 
 tab_model(tn_spain_results$selected_model,transform = NULL,show.intercept = TRUE)
 tn_spain_results$cv_delta
+
+model <- glm(formula = log_TN~ Pastures.and.open.nature_500.s+Natural_5.s +Animals_cont.s +bio7.s, data =  model_df[model_df$Country == 'Spain', ])
+tab_model(model,transform = NULL,show.intercept = TRUE)
 ```
 
 ```{r UK}
@@ -608,8 +576,9 @@ tn_uk_results$selected_model
 tn_uk_selected <- glm(formula = log_TN ~  Animals_cont.s +  bio7.s, data = df)
 tab_model(tn_uk_selected,transform = NULL,show.intercept = TRUE)
 
+model <- glm(formula = log_TN~ Natural_5.s+Animals_cont.s +bio7.s, data =  model_df[model_df$Country == 'UK', ])
+tab_model(model,transform = NULL,show.intercept = TRUE)
 
-tn_uk_results$cv_delta
 ```
 
 ```{r Switzerland}
@@ -617,8 +586,12 @@ tn_uk_results$cv_delta
 tn_Switzerland_results <- tn_glm_analysis(
                             country = "Switzerland", 
                             K = 5)
-
 tab_model(tn_Switzerland_results$selected_model,transform = NULL,show.intercept = TRUE)
+
+
+model <- glm(formula = log_TN~ Pastures.and.open.nature_500.s, data =  model_df[model_df$Country == 'Switzerland', ])
+tab_model(model,transform = NULL,show.intercept = TRUE)
+
 ```
 
 
@@ -628,36 +601,13 @@ tn_Turkey_results <- tn_glm_analysis(
                             K = 5)
 tn_Turkey_results$cv_delta
 tab_model(tn_Turkey_results$selected_model,transform = NULL,show.intercept = TRUE)
- 
-df <- model_df[model_df$Country == 'Turkey', ]
-dim(df)
 
-initial_model <- glm(formula = log_TN~ Natural_5.s +  
-                       Pastures.and.open.nature_500.s +
-                       Animals_cont.s + Depth.s,
-                     data = df)
-  
-print(summary(initial_model))
-selected_model <- stepAIC(initial_model, direction = "both")
-
-
-
-table(df$Country)
-test <- glm(formula = log_TN~   Cropland_500.s+bio12.s, data = df)
-tab_model(test,transform = NULL,show.intercept = TRUE)
+model <- glm(formula = log_TN~ Cropland_500.s+bio7.s+bio12.s, data =  model_df[model_df$Country == 'Turkey', ])
+tab_model(model,transform = NULL,show.intercept = TRUE)
 
 ```
 
-```{r Denmark}
 
-#r2 0.358
-tn_denmark_results <- tn_glm_analysis(
-                            country = "Denmark", 
-                            K = 5)
-
-tab_model(tn_denmark_results$selected_model,transform = NULL,show.intercept = TRUE)
-
-```
 
 ```{r Uru}
 #r2 0.358
@@ -669,10 +619,11 @@ tn_Uruguay_results <- tn_glm_analysis(
 tab_model(tn_Uruguay_results$selected_model,transform = NULL,show.intercept = TRUE)
 tn_Uruguay_results$cv_delta # overfitting 9.921005 
 
-tp_Uruguay_sig_model <- glm(formula = TP ~ Natural_5.s + Cropland_500.s   + Animals_cont.s + 
-    Area.s + bio1.s, family = Gamma(link = "log"), data = model_df[model_df$Country=='Uruguay',])
+model <- glm(formula = log_TN ~ Natural_5.s + Cropland_500.s , data = model_df[model_df$Country=='Uruguay',])
 
-summary(tp_Uruguay_sig_model)
+summary(model)
+tab_model(model,transform = NULL,show.intercept = TRUE)
+
 ```
 
 
