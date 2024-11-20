@@ -40,12 +40,15 @@ levels(dom_landcover_nov$Country)
 
 ##Alternative categories
 ## Bio climatic regions
-dom_landcover_nov$altregion <- 'Atlantic'
-dom_landcover_nov[dom_landcover_nov$Country == 'Spain' | dom_landcover_nov$Country == 'Turkey', "altregion"] <- 'Mediterranean'
-dom_landcover_nov[dom_landcover_nov$Country == 'Belgium' | dom_landcover_nov$Country == 'Germany'
-           | dom_landcover_nov$Country == 'Switzerland', "altregion"] <- 'centralEU'
-dom_landcover_nov[dom_landcover_nov$Country == 'Turkey', "altregion"] <- 'Turkey'
-#dom_landcover_nov[dom_landcover_nov$Country == 'Uruguay',]$altregion <- 'Uruguay'
+dom_landcover_nov$Country <- as.character(dom_landcover_nov$Country)
+
+# Initialize altregion as a copy of Country
+dom_landcover_nov$altregion <- dom_landcover_nov$Country
+
+dom_landcover_nov[dom_landcover_nov$Country %in% c('Belgium', 'Denmark', 'UK'), "altregion"] <- 'Atlantic'
+
+# Check the changes
+table(dom_landcover_nov$altregion)
 
 ##Factors and transformation 
 dom_landcover_nov$altregion <- as.factor(dom_landcover_nov$altregion)
@@ -69,7 +72,7 @@ shapiro.test(dom_landcover_nov$log_TP)
 # columns_with_na
 
 ```
-```{r Two histograms }
+```{r Histograms }
 hist_TN <- ggplot(dom_landcover_nov, aes(x = TN)) + 
   geom_histogram(binwidth = 0.1, fill = "skyblue", color = "black", alpha = 0.7) + 
   labs(
@@ -435,16 +438,6 @@ tab_model(tp_Germany_results$selected_model,transform = NULL,show.intercept = TR
 tp_Germany_results$cv_delta
 ```
 
-
-
-
-
-
-
-
-
-
-
 ```{r Switzerland}
 #r2 0.504
 tp_switzerland_results <- tp_glm_analysis(
@@ -543,16 +536,6 @@ tn_belgium_results$cv_delta
 
 ```
 
-```{r TN Germany}
-tn_germany_results <- tn_glm_analysis(
-                            country = "Germany", 
-                            K = 5)
-
-tab_model(tn_germany_results$selected_model,transform = NULL,show.intercept = TRUE)
-tn_belgium_results$cv_delta
-
-```
-
 ```{r Spain}
 tn_spain_results <- tn_glm_analysis(
                             country = "Spain", 
@@ -627,214 +610,22 @@ tab_model(model,transform = NULL,show.intercept = TRUE)
 ```
 
 
-```{r TN GLMM Section I: (A) Country +Pondscape}
-TN_euromedi_mixed_1 <-lmer(formula = log_TN ~  Animals_cont.s + bio7.s + Depth.s+Cropland_500.s+
-                                 (1|altregion) + (1|altregion:Pondscape) , data = model_df,na.action = "na.fail") 
-summary(TN_euromedi_mixed_1)
-tab_model(TN_euromedi_model_selected)
 
-TN_euromedi_mixed_1_selected <-lmer(formula = log_TN ~  Animals_cont.s +  Depth.s+Cropland_500.s+
-                                 (1|Country) + (1|Country:Pondscape) , data = model_df,na.action = "na.fail") 
-tab_model(TN_euromedi_mixed_1_selected)
-r.squaredGLMM(TN_euromedi_mixed_1_selected) 
-
-VarCorr(TN_euromedi_mixed_1_selected)
-rand(TN_euromedi_mixed_1_selected)
-
-#VOC: variance or covariance
-#sdcor: standard deviation or correlation
-VarCorr(TN_euromedi_mixed_1_selected) %>%
-  as_data_frame()
-
-VarCorr(TN_euromedi_mixed_1_selected) %>%
-  as_data_frame() %>%
-  mutate(icc=vcov/sum(vcov)) 
-
-anova(TN_euromedi_mixed_1_selected)
-
-```
-
-
-
-
-```{r}
-model_df$Urban_500.s
-TN_euromedi_mixed_4 <-lmer(formula = log_TN ~  Urban_500.s+Natural_5.s+Area.s+
-                             Animals_cont.s + bio7.s +bio1.s+bio12.s+ Depth.s+Cropland_500.s+
-                                   (1|dominant_landcover) + (1|dominant_landcover:Pondscape) , data = model_df,na.action = "na.fail") #Same results yielded after tested with both selected vars and all vars
-
-summary(TN_euromedi_mixed_4)
-
-TN_euromedi_mixed_4_selected <-lmer(formula = log_TN ~  Animals_cont.s + Depth.s+Cropland_500.s+
-                                   (1|dominant_landcover) + (1|dominant_landcover:Pondscape) , data = model_df,na.action = "na.fail") 
-summary(TN_euromedi_mixed_4_selected)
-ranef(TN_euromedi_mixed_4_selected)
-tab_model(TN_euromedi_mixed_4_selected,show.intercept = TRUE,transform = NULL)
-
-
-VarCorr(TN_euromedi_mixed_4_selected)
-rand(TN_euromedi_mixed_4_selected)
-
-#VOC: variance or covariance
-#sdcor: standard deviation or correlation
-VarCorr(TN_euromedi_mixed_4_selected) %>%
-  as_data_frame()
-
-VarCorr(TN_euromedi_mixed_4_selected) %>%
-  as_data_frame() %>%
-  mutate(icc=vcov/sum(vcov)) 
-
-```
-
-
-```{r TP (1|Dominant_landuse) + (1|Dominant_landuse:Pondscape)}
- 
-
-TP_euromedi_mixed_4 <-glmer(formula =TP ~   Animals_cont.s + bio1.s + Cropland_500.s +  Depth.s + Natural_5.s +bio12.s+
-                              Pastures.and.open.nature_500.s+(1|dominant_landcover) + (1|dominant_landcover:Pondscape), 
-                            data = model_df, family = Gamma(link = "log"), na.action = "na.fail")
-summary(TP_euromedi_mixed_4) #natural5 
-tab_model(TP_euromedi_mixed_4,show.intercept = TRUE,transform = NULL)
-
-
-TP_euromedi_mixed_4_selected <-glmer(formula =TP ~   Animals_cont.s + bio1.s + Cropland_500.s +  Depth.s + 
-                              Pastures.and.open.nature_500.s+(1|dominant_landcover) + (1|dominant_landcover:Pondscape), 
-                            data = model_df, family = Gamma(link = "log"), na.action = "na.fail")
-tab_model(TP_euromedi_mixed_4_selected,show.intercept = TRUE,transform = NULL)
-
-
-VarCorr(TP_euromedi_mixed_4_selected)
-rand(TP_euromedi_mixed_4_selected)
-
-#VOC: variance or covariance
-#sdcor: standard deviation or correlation
-VarCorr(TP_euromedi_mixed_4_selected) %>%
-  as_data_frame()
-
-VarCorr(TP_euromedi_mixed_4_selected) %>%
-  as_data_frame() %>%
-  mutate(icc=vcov/sum(vcov)) 
-
-```
-
-```{r TP random slopes Animal/cropland selection}
-
-TP_euromedi_rs_crop <-glmer(formula =TP ~   bio1.s + Cropland_500.s +  Depth.s + Natural_5.s+Animals_cont.s+
-                              Pastures.and.open.nature_500.s+(1+Cropland_500.s|dominant_landcover), 
-                            data = model_df, family = Gamma(link = "log"), na.action = "na.fail")
-summary(TP_euromedi_rs_crop)
-tab_model(TP_euromedi_rs_crop,show.intercept = TRUE,transform = NULL)#, file=paste0(outwdir,'tp_rs_crop.doc'))
-
-TP_euromedi_crop  <-glmer(formula =TP ~   bio1.s + Cropland_500.s +  Depth.s + Natural_5.s+
-                              Pastures.and.open.nature_500.s+(1|dominant_landcover), 
-                            data = model_df, family = Gamma(link = "log"), na.action = "na.fail")
-tab_model(TP_euromedi_crop)
-
-anova(TP_euromedi_rs_crop,TP_euromedi_crop,)
-
-#Natural_5.s not
-TP_euromedi_rs_crop_pond <-glmer(formula =TP ~   bio1.s + Cropland_500.s +  Depth.s + Animals_cont.s+Natural_5.s+
-                              Pastures.and.open.nature_500.s+(1+Cropland_500.s|dominant_landcover:Country), 
-                            data = model_df, family = Gamma(link = "log"), control = glmerControl(optimizer = "bobyqa", optCtrl =
-                                                                                                    list(maxfun = 1e5)))
-
-
-summary(TP_euromedi_rs_crop_pond)
-
-tab_model(TP_euromedi_rs_crop_pond,show.intercept = TRUE,transform = NULL)#, file=paste0(outwdir,'tp_rs_crop_pond.doc'))
-
-TP_euromedi_rs_crop_pond_test <- glmer(formula =TP ~   bio1.s + Cropland_500.s +  Depth.s + Animals_cont.s+Natural_5.s+
-                              Pastures.and.open.nature_500.s+(1|dominant_landcover:Pondscape), 
-                            data = model_df, family = Gamma(link = "log"), control = glmerControl(optimizer = "bobyqa", optCtrl =
-                                                                                                    list(maxfun = 1e5)))
-
-anova(TP_euromedi_rs_crop_pond,TP_euromedi_rs_crop_pond_test)
-model_df
-tab_model(TN_euromedi_model_selected,show.intercept = TRUE,transform = NULL)
-
-TP_euromedi_rs_ani <-glmer(formula =TP ~   bio1.s + Cropland_500.s +  Depth.s + Natural_5.s+
-                              Pastures.and.open.nature_500.s+(1+Animals_cont.s|dominant_landcover), 
-                            data = model_df, family = Gamma(link = "log"), na.action = "na.fail")
-summary(TP_euromedi_rs_ani)
-tab_model(TP_euromedi_rs_ani,show.intercept = TRUE,transform = NULL, file=paste0(outwdir,'tp_rs_animal.doc'))
-
-```
-
-
-```{r TN random slopes Animal/cropland selection}
-
-TN_euromedi_rs_crop <-lmer(formula =log_TN ~   bio7.s +  Depth.s + Animals_cont.s+
-                              (1+Cropland_500.s|dominant_landcover:Pondscape), 
-                            data = model_df)
-
-summary(TN_euromedi_rs_crop)
-
-TN_euromedi_rs_crop_test <-lmer(formula =log_TN ~   bio7.s +  Depth.s + Animals_cont.s+
-                              (1|dominant_landcover:Pondscape), 
-                            data = model_df)
-anova(TN_euromedi_rs_crop,TN_euromedi_rs_crop_test)
-
-tab_model(TN_euromedi_rs_crop,show.intercept = TRUE,transform = NULL, file=paste0(outwdir,'tn_rs_crop_pond.doc'))
-
-TN_euromedi_rs_ani <-lmer(formula =log_TN ~   bio7.s + Cropland_500.s +  Depth.s+Animals_cont.s+
-                              (1+Animals_cont.s|dominant_landcover:Pondscape), control = lmerControl(optimizer = "nloptwrap", optCtrl = list(maxfun = 1e5)),
-                            data = model_df)
-
-
-
-
-TN_euromedi_rs_ani_simple <- lmer(
-  formula = log_TN ~ bio7.s + Cropland_500.s + Depth.s +
-    (1+Animals_cont.s|dominant_landcover:Pondscape), 
-  control = lmerControl(optimizer = "nloptwrap", optCtrl = list(maxfun = 1e5)),
-  data = model_df
-)
-summary(TN_euromedi_rs_ani_simple)
-
-
-
-TN_euromedi_rs_ani_test <- lmer(
-  formula = log_TN ~ bio7.s + Cropland_500.s + Depth.s +
-    (1|dominant_landcover:Pondscape), 
-  control = lmerControl(optimizer = "nloptwrap", optCtrl = list(maxfun = 1e5)),
-  data = model_df
-)
-
-anova(TN_euromedi_rs_ani_simple,TN_euromedi_rs_ani_test)
-
-summary(TN_euromedi_rs_ani)
-tab_model(TN_euromedi_rs_ani_simple,show.intercept = TRUE,transform = NULL, file=paste0(outwdir,'tn_rs_animal_pond.doc'))
-
-
-TN_euromedi_rs_ani_test <-lmer(formula =log_TN ~   bio7.s + Cropland_500.s +  Depth.s+
-                              (1|dominant_landcover:Pondscape), 
-                            data = model_df)
-
-anova(TN_euromedi_rs_ani,TN_euromedi_rs_ani_test)
-```
-
-
-```{r TN GLMM Section I: (A) Country +Pondscape}
-#When using dredge, it only remove vars of fixed effect. AIC and anova should be used when compare 
-
-#GLMM random slope without Pondscape dom
+```{r TN-TP GLMM Section (A) Country +Pondscape}
 TN_euromedi_mixed_1 <-lmer(formula = log_TN ~  Natural_5.s + Aquatic_500.s + Cropland_500.s +
                             Pastures.and.open.nature_500.s +
                              Urban_500.s + Animals_cont.s + Area.s + Depth.s +
-                             bio1.s+bio7.s+
+                             bio1.s+bio7.s+bio12.s+
                                  (1|Country) + (1|Country:Pondscape) , data = model_df,na.action = "na.fail") 
-
 summary(TN_euromedi_mixed_1)
+tab_model(TN_euromedi_mixed_1,show.intercept = TRUE,transform = NULL)
 
-TN_euromedi_mixed_1_selected <-lmer(formula = log_TN ~  Animals_cont.s +  Depth.s+Cropland_500.s+
+TN_euromedi_mixed_1_selected <-lmer(formula = log_TN ~  bio12.s +  Depth.s+Cropland_500.s+
                                  (1|Country) + (1|Country:Pondscape) , data = model_df,na.action = "na.fail") 
 anova(TN_euromedi_mixed_1,TN_euromedi_mixed_1_selected)
-
-tab_model(TN_euromedi_mixed_1,show.intercept = TRUE,transform = NULL)
 tab_model(TN_euromedi_mixed_1_selected,show.intercept = TRUE,transform = NULL)
 
-dotplot(ranef(TN_euromedi_mixed_1_selected))
-
+dotplot(ranef(TN_euromedi_mixed_1))
 shapiro.test(residuals(TN_euromedi_mixed_1_selected))
 
 
@@ -846,7 +637,120 @@ test2 <-lmer(formula = log_TN ~  Animals_cont.s + bio7.s + Depth.s+Cropland_500.
 anova(TN_euromedi_mixed_1,test1)
 anova(TN_euromedi_mixed_1,test2)
 anova(TN_euromedi_mixed_1,TN_euromedi_dredge_mixed_country_pds)
+
+#TP 
+TP_euromedi_mixed_1 <-glmer(formula =TP ~   Natural_5.s+Cropland_500.s +Pastures.and.open.nature_500.s+Animals_cont.s +
+                              bio1.s + bio12.s+(1|Country) +Depth.s+(1|Country:Pondscape) , data = model_df, family =
+                              Gamma(link = "log"), na.action = "na.fail") 
+
+summary(TP_euromedi_mixed_1)
+tab_model(TP_euromedi_mixed_1,show.intercept = TRUE,transform = NULL)
+
+TP_euromedi_mixed_1_selected <-glmer(formula =TP ~   Natural_5.s+Cropland_500.s +Animals_cont.s +
+                              bio1.s + bio12.s+(1|Country) +Depth.s+(1|Country:Pondscape) , data = model_df, family =
+                              Gamma(link = "log"), na.action = "na.fail") 
+
+summary(TP_euromedi_mixed_1_selected)
+tab_model(TP_euromedi_mixed_1_selected,show.intercept = TRUE,transform = NULL)
+
+#variance
+ranef(TN_euromedi_mixed_4_selected)
+tab_model(TN_euromedi_mixed_4_selected,show.intercept = TRUE,transform = NULL)
+
+
+VarCorr(TN_euromedi_mixed_4_selected)
+rand(TN_euromedi_mixed_4_selected)
+
+#VOC: variance or covariance
+#sdcor: standard deviation or correlation
+VarCorr(TN_euromedi_mixed_1) %>%
+  as_data_frame()
+
+VarCorr(TP_euromedi_mixed_1) %>%
+  as_data_frame() %>%
+  mutate(icc=vcov/sum(vcov)) 
 ```
+
+```{r Trials altregion}
+ tn_alt<- lmer(log_TN ~ Cropland_500.s +
+                            Depth.s +
+                             +bio12.s+(1|altregion)+(1|altregion:Pondscape), 
+                           data = model_df)
+summary(tn_alt)
+tab_model(tn_alt,show.intercept = TRUE,transform = NULL)
+
+VarCorr(tn_alt) %>%
+  as_data_frame() %>%
+  mutate(icc=vcov/sum(vcov)) 
+
+table(model_df$altregion,model_df$Country)
+tn_alt_selected <- lmer(log_TN ~ Aquatic_500.s + Cropland_500.s +
+                            
+                            Animals_cont.s + Depth.s +
+                             bio7.s+(1|dominant_landcover), 
+                           data = model_df)
+summary(tn_alt_selected)
+tab_model(tn_alt_selected)
+
+#TP 
+tp_alt<- glmer(TP~ Natural_5.s+Cropland_500.s +Animals_cont.s +Pastures.and.open.nature_500.s+
+                              bio1.s + bio12.s+Depth.s+(1|altregion)+(1|altregion:Pondscape), family = Gamma(link = "log"), 
+               data = model_df)
+summary(tp_alt)
+tab_model(tp_alt,show.intercept = TRUE,transform = NULL)
+
+VarCorr(tp_alt) %>%
+  as_data_frame() %>%
+  mutate(icc=vcov/sum(vcov)) 
+```
+
+
+
+```{r TN-TP (1|Dominant_landuse) + (1|Dominant_landuse:Pondscape)}
+ TN_euromedi_mixed_4 <-lmer(formula = log_TN ~  bio12.s + Depth.s+Cropland_500.s+
+                                   (1|dominant_landcover) + (1|dominant_landcover:Pondscape) , data = model_df,na.action = "na.fail") 
+
+summary(TN_euromedi_mixed_4)
+tab_model(TN_euromedi_mixed_4,show.intercept = TRUE,transform = NULL)
+
+
+TN_euromedi_mixed_4_selected <-lmer(formula = log_TN ~  Animals_cont.s + Depth.s+Cropland_500.s+
+                                   (1|dominant_landcover) + (1|dominant_landcover:Pondscape) , data = model_df,na.action = "na.fail") 
+summary(TN_euromedi_mixed_4_selected)
+ranef(TN_euromedi_mixed_4_selected)
+tab_model(TN_euromedi_mixed_4_selected,show.intercept = TRUE,transform = NULL)
+
+
+
+TP_euromedi_mixed_4 <-glmer(formula =TP ~   Natural_5.s+Cropland_500.s +Animals_cont.s +
+                              bio1.s + bio12.s+Depth.s+(1|dominant_landcover) + (1|dominant_landcover:Pondscape), 
+                            data = model_df, family = Gamma(link = "log"), na.action = "na.fail")
+summary(TP_euromedi_mixed_4) #natural5 
+tab_model(TP_euromedi_mixed_4,show.intercept = TRUE,transform = NULL)
+
+
+TP_euromedi_mixed_4_selected <-glmer(formula =TP ~   Animals_cont.s + bio1.s + Cropland_500.s +  Depth.s + 
+                              Pastures.and.open.nature_500.s+(1|dominant_landcover) + (1|dominant_landcover:Pondscape), 
+                            data = model_df, family = Gamma(link = "log"), na.action = "na.fail")
+tab_model(TP_euromedi_mixed_4_selected,show.intercept = TRUE,transform = NULL)
+
+
+VarCorr(TP_euromedi_mixed_4)
+rand(TP_euromedi_mixed_4_selected)
+
+#VOC: variance or covariance
+#sdcor: standard deviation or correlation
+VarCorr(TP_euromedi_mixed_4_selected) %>%
+  as_data_frame()
+
+VarCorr(TP_euromedi_mixed_4) %>%
+  as_data_frame() %>%
+  mutate(icc=vcov/sum(vcov)) 
+
+```
+
+
+
 
 ```{r}
 #Plot random effect variances
@@ -871,6 +775,47 @@ percent_residual <- (residual_variance / total_variance) * 100
 percent_country
 percent_pondscape
 ```
+
+```{r  Section II: (D)  (1|Dominant_landuse) + (1|Dominant_landuse:Pondscape)}
+TN_euromedi_mixed_4 <-lmer(formula = log_TN ~  Natural_5.s + Aquatic_500.s + Cropland_500.s +
+                            Pastures.and.open.nature_500.s +
+                             Urban_500.s + Animals_cont.s + Area.s + Depth.s +
+                             bio1.s+bio7.s+bio12.s+
+                                   (1|dominant_landcover) + (1|dominant_landcover:Pondscape) , data = model_df,na.action = "na.fail") 
+
+summary(TN_euromedi_mixed_4)
+
+TN_euromedi_mixed_4_selected <-lmer(formula = log_TN ~  Animals_cont.s + Depth.s+Cropland_500.s+
+                                   (1|dominant_landcover) + (1|dominant_landcover:Pondscape) , data = model_df,na.action = "na.fail") 
+tab_model(TN_euromedi_mixed_4_selected,show.intercept = TRUE,transform = NULL)
+
+
+summary(TN_euromedi_mixed_4_selected)
+ranef(TN_euromedi_mixed_4_selected)
+tab_model(TN_euromedi_mixed_4_selected,show.intercept = TRUE,transform = NULL)
+
+anova(TN_euromedi_mixed_1_selected,TN_euromedi_mixed_2_selected,TN_euromedi_mixed_3_selected,TN_euromedi_mixed_4_selected)
+
+#TP landuse
+
+TP_euromedi_mixed_4 <-glmer(formula =TP ~   Natural_5.s+Cropland_500.s +Pastures.and.open.nature_500.s+Animals_cont.s +
+                              bio1.s + bio12.s+(1|dominant_landcover) + (1|dominant_landcover:Pondscape), 
+                            data = model_df, family = Gamma(link = "log"), na.action = "na.fail")
+summary(TP_euromedi_mixed_4) #natural5 
+tab_model(TP_euromedi_mixed_4,show.intercept = TRUE,transform = NULL)
+
+
+TP_euromedi_mixed_4_test <-glmer(formula =TP ~   Animals_cont.s + bio1.s + Cropland_500.s +  Depth.s + 
+                              Pastures.and.open.nature_500.s+(1|dominant_landcover) + (1|dominant_landcover:Pondscape), 
+                            data = model_df, family = Gamma(link = "log"), na.action = "na.fail")
+tab_model(TP_euromedi_mixed_4_test,show.intercept = TRUE,transform = NULL)
+
+
+
+
+```
+
+
 
 
 
@@ -948,23 +893,7 @@ percent_pondscape
 ```
 
 
-```{r altregion}
- tn_alt<- lmer(log_TN ~ Natural_5.s + Aquatic_500.s + Cropland_500.s +
-                            Pastures.and.open.nature_500.s +
-                             Urban_500.s + Animals_cont.s + Area.s + Depth.s +
-                             bio1.s+bio7.s+(1|dominant_landcover), 
-                           data = model_df)
-summary(tn_alt)
 
-table(model_df$altregion,model_df$Country)
-tn_alt_selected <- lmer(log_TN ~ Aquatic_500.s + Cropland_500.s +
-                            
-                            Animals_cont.s + Depth.s +
-                             bio7.s+(1|dominant_landcover), 
-                           data = model_df)
-summary(tn_alt_selected)
-tab_model(tn_alt_selected)
-```
 
 ```{r cropland and livestock slopes at pondscape level}
  tn_alt<- lmer(log_TN ~ Natural_5.s + Aquatic_500.s + Cropland_500.s +
@@ -990,6 +919,7 @@ tn_alt<- lmer(log_TN ~ Depth.s +Animals_cont.s+
 summary(tn_alt)
 tab_model(tn_alt)
 ```
+
 ```{r (1 | Country:Pondscape ) or + (1 | Dominant_landuse:Pondscape )}
  test<- lmer(log_TN ~ Natural_5.s  + Cropland_500.s +
                             Pastures.and.open.nature_500.s +
@@ -1343,11 +1273,15 @@ percent_pondscape
 
 ```{r TP GLMM Section I: (A) Country + Pondscape}
 
-TP_euromedi_mixed_1 <-glmer(formula =TP ~   Animals_cont.s + bio1.s + Cropland_500.s +  Depth.s + Natural_5.s +
-                              Pastures.and.open.nature_500.s+(1|Country) + (1|Country:Pondscape) , 
-                            data = model_df, family = Gamma(link = "log"), na.action = "na.fail") 
-summary(TP_euromedi_mixed_1)
+TP_euromedi_mixed_1 <-glmer(formula =TP ~   Animals_cont.s + bio1.s + Cropland_500.s +
+                              Depth.s + Natural_5.s
+                            +bio12.s+(1|Country) +
+                              (1|Country:Pondscape) , data = model_df, family =
+                              Gamma(link = "log"), na.action = "na.fail") 
 
+summary(TP_euromedi_mixed_1)
+tab_model(TP_euromedi_mixed_1,show.intercept = TRUE,transform = NULL)
+#Pastures.and.open.nature_500.s+
 
 TP_euromedi_mixed_1_test <-glmer(formula =TP ~   Animals_cont.s + Cropland_500.s +  Depth.s +                               Pastures.and.open.nature_500.s+(1|Country) + (1|Country:Pondscape) , 
                             data = model_df, family = Gamma(link = "log"), na.action = "na.fail") 
@@ -1555,7 +1489,101 @@ anova(TP_euromedi_mixed_10,TP_euromedi_mixed_10_test1)
 
 ```
 
+```{r TP random slopes Animal/cropland selection}
 
+TP_euromedi_rs_crop <-glmer(formula =TP ~   bio1.s + Cropland_500.s +  Depth.s + Natural_5.s+Animals_cont.s+
+                              Pastures.and.open.nature_500.s+(1+Cropland_500.s|dominant_landcover), 
+                            data = model_df, family = Gamma(link = "log"), na.action = "na.fail")
+summary(TP_euromedi_rs_crop)
+tab_model(TP_euromedi_rs_crop,show.intercept = TRUE,transform = NULL)#, file=paste0(outwdir,'tp_rs_crop.doc'))
+
+TP_euromedi_crop  <-glmer(formula =TP ~   bio1.s + Cropland_500.s +  Depth.s + Natural_5.s+
+                              Pastures.and.open.nature_500.s+(1|dominant_landcover), 
+                            data = model_df, family = Gamma(link = "log"), na.action = "na.fail")
+tab_model(TP_euromedi_crop)
+
+anova(TP_euromedi_rs_crop,TP_euromedi_crop,)
+
+#Natural_5.s not
+TP_euromedi_rs_crop_pond <-glmer(formula =TP ~   bio1.s + Cropland_500.s +  Depth.s + Animals_cont.s+Natural_5.s+
+                              Pastures.and.open.nature_500.s+(1+Cropland_500.s|dominant_landcover:Country), 
+                            data = model_df, family = Gamma(link = "log"), control = glmerControl(optimizer = "bobyqa", optCtrl =
+                                                                                                    list(maxfun = 1e5)))
+
+
+summary(TP_euromedi_rs_crop_pond)
+
+tab_model(TP_euromedi_rs_crop_pond,show.intercept = TRUE,transform = NULL)#, file=paste0(outwdir,'tp_rs_crop_pond.doc'))
+
+TP_euromedi_rs_crop_pond_test <- glmer(formula =TP ~   bio1.s + Cropland_500.s +  Depth.s + Animals_cont.s+Natural_5.s+
+                              Pastures.and.open.nature_500.s+(1|dominant_landcover:Pondscape), 
+                            data = model_df, family = Gamma(link = "log"), control = glmerControl(optimizer = "bobyqa", optCtrl =
+                                                                                                    list(maxfun = 1e5)))
+
+anova(TP_euromedi_rs_crop_pond,TP_euromedi_rs_crop_pond_test)
+model_df
+tab_model(TN_euromedi_model_selected,show.intercept = TRUE,transform = NULL)
+
+TP_euromedi_rs_ani <-glmer(formula =TP ~   bio1.s + Cropland_500.s +  Depth.s + Natural_5.s+
+                              Pastures.and.open.nature_500.s+(1+Animals_cont.s|dominant_landcover), 
+                            data = model_df, family = Gamma(link = "log"), na.action = "na.fail")
+summary(TP_euromedi_rs_ani)
+tab_model(TP_euromedi_rs_ani,show.intercept = TRUE,transform = NULL, file=paste0(outwdir,'tp_rs_animal.doc'))
+
+```
+
+
+```{r TN random slopes Animal/cropland selection}
+
+TN_euromedi_rs_crop <-lmer(formula =log_TN ~   bio7.s +  Depth.s + Animals_cont.s+
+                              (1+Cropland_500.s|dominant_landcover:Pondscape), 
+                            data = model_df)
+
+summary(TN_euromedi_rs_crop)
+
+TN_euromedi_rs_crop_test <-lmer(formula =log_TN ~   bio7.s +  Depth.s + Animals_cont.s+
+                              (1|dominant_landcover:Pondscape), 
+                            data = model_df)
+anova(TN_euromedi_rs_crop,TN_euromedi_rs_crop_test)
+
+tab_model(TN_euromedi_rs_crop,show.intercept = TRUE,transform = NULL, file=paste0(outwdir,'tn_rs_crop_pond.doc'))
+
+TN_euromedi_rs_ani <-lmer(formula =log_TN ~   bio7.s + Cropland_500.s +  Depth.s+Animals_cont.s+
+                              (1+Animals_cont.s|dominant_landcover:Pondscape), control = lmerControl(optimizer = "nloptwrap", optCtrl = list(maxfun = 1e5)),
+                            data = model_df)
+
+
+
+
+TN_euromedi_rs_ani_simple <- lmer(
+  formula = log_TN ~ bio7.s + Cropland_500.s + Depth.s +
+    (1+Animals_cont.s|dominant_landcover:Pondscape), 
+  control = lmerControl(optimizer = "nloptwrap", optCtrl = list(maxfun = 1e5)),
+  data = model_df
+)
+summary(TN_euromedi_rs_ani_simple)
+
+
+
+TN_euromedi_rs_ani_test <- lmer(
+  formula = log_TN ~ bio7.s + Cropland_500.s + Depth.s +
+    (1|dominant_landcover:Pondscape), 
+  control = lmerControl(optimizer = "nloptwrap", optCtrl = list(maxfun = 1e5)),
+  data = model_df
+)
+
+anova(TN_euromedi_rs_ani_simple,TN_euromedi_rs_ani_test)
+
+summary(TN_euromedi_rs_ani)
+tab_model(TN_euromedi_rs_ani_simple,show.intercept = TRUE,transform = NULL, file=paste0(outwdir,'tn_rs_animal_pond.doc'))
+
+
+TN_euromedi_rs_ani_test <-lmer(formula =log_TN ~   bio7.s + Cropland_500.s +  Depth.s+
+                              (1|dominant_landcover:Pondscape), 
+                            data = model_df)
+
+anova(TN_euromedi_rs_ani,TN_euromedi_rs_ani_test)
+```
 
 
 
