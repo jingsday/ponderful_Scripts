@@ -1,0 +1,67 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' class='svglite' width='576.00pt' height='360.00pt' viewBox='0 0 576.00 360.00'>
+<defs>
+  <style type='text/css'><![CDATA[
+    .svglite line, .svglite polyline, .svglite polygon, .svglite path, .svglite rect, .svglite circle {
+      fill: none;
+      stroke: #000000;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-miterlimit: 10.00;
+    }
+    .svglite text {
+      white-space: pre;
+    }
+  ]]></style>
+</defs>
+<rect width='100%' height='100%' style='stroke: none; fill: none;'/>
+<defs>
+  <clipPath id='cpMC4wMHw1NzYuMDB8MC4wMHwzNjAuMDA='>
+    <rect x='0.00' y='0.00' width='576.00' height='360.00' />
+  </clipPath>
+</defs>
+<g clip-path='url(#cpMC4wMHw1NzYuMDB8MC4wMHwzNjAuMDA=)'>
+</g>
+<defs>
+  <clipPath id='cpNTYuMTh8NDIwLjQ0fDI3Ljg5fDMxOC43MA=='>
+    <rect x='56.18' y='27.89' width='364.26' height='290.80' />
+  </clipPath>
+</defs>
+<g clip-path='url(#cpNTYuMTh8NDIwLjQ0fDI3Ljg5fDMxOC43MA==)'>
+<polyline points='56.18,264.91 420.44,264.91 ' style='stroke-width: 0.53; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='56.18,183.78 420.44,183.78 ' style='stroke-width: 0.53; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='56.18,102.65 420.44,102.65 ' style='stroke-width: 0.53; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='56.18,305.48 420.44,305.48 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='56.18,224.35 420.44,224.35 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='56.18,143.21 420.44,143.21 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='56.18,62.08 420.44,62.08 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='124.48,318.70 124.48,27.89 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='238.31,318.70 238.31,27.89 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<polyline points='352.14,318.70 352.14,27.89 ' style='stroke-width: 1.07; stroke: #EBEBEB; stroke-linecap: butt;' />
+<rect x='187.09' y='251.81' width='102.45' height='53.67' style='stroke-width: 1.07; stroke-linecap: butt; stroke-linejoin: miter; fill: #00BA38; fill-opacity: 0.80;' />
+<rect x='73.25' y='217.85' width='102.45' height='87.63' style='stroke-width: 1.07; stroke-linecap: butt; stroke-linejoin: miter; fill: #F8766D; fill-opacity: 0.80;' />
+<rect x='300.92' y='41.11' width='102.45' height='264.37' style='stroke-width: 1.07; stroke-linecap: butt; stroke-linejoin: miter; fill: #619CFF; fill-opacity: 0.80;' />
+<text x='238.31' y='246.71' text-anchor='middle' style='font-size: 14.23px; font-family: "Arial";' textLength='40.31px' lengthAdjust='spacingAndGlyphs'>13.2%</text>
+<text x='124.48' y='212.75' text-anchor='middle' style='font-size: 14.23px; font-family: "Arial";' textLength='40.31px' lengthAdjust='spacingAndGlyphs'>21.6%</text>
+<text x='352.14' y='36.01' text-anchor='middle' style='font-size: 14.23px; font-family: "Arial";' textLength='40.31px' lengthAdjust='spacingAndGlyphs'>65.2%</text>
+</g>
+<g clip-path='url(#cpMC4wMHw1NzYuMDB8MC4wMHwzNjAuMDA=)'>
+<text x='51.25' y='310.50' text-anchor='end' style='font-size: 14.00px;fill: #4D4D4D; font-family: "Arial";' textLength='20.23px' lengthAdjust='spacingAndGlyphs'>0%</text>
+<text x='51.25' y='229.37' text-anchor='end' style='font-size: 14.00px;fill: #4D4D4D; font-family: "Arial";' textLength='28.02px' lengthAdjust='spacingAndGlyphs'>20%</text>
+<text x='51.25' y='148.24' text-anchor='end' style='font-size: 14.00px;fill: #4D4D4D; font-family: "Arial";' textLength='28.02px' lengthAdjust='spacingAndGlyphs'>40%</text>
+<text x='51.25' y='67.10' text-anchor='end' style='font-size: 14.00px;fill: #4D4D4D; font-family: "Arial";' textLength='28.02px' lengthAdjust='spacingAndGlyphs'>60%</text>
+<text x='124.48' y='333.67' text-anchor='middle' style='font-size: 14.00px;fill: #4D4D4D; font-family: "Arial";' textLength='49.01px' lengthAdjust='spacingAndGlyphs'>Country</text>
+<text x='238.31' y='333.67' text-anchor='middle' style='font-size: 14.00px;fill: #4D4D4D; font-family: "Arial";' textLength='122.93px' lengthAdjust='spacingAndGlyphs'>Country:Pondscape</text>
+<text x='352.14' y='333.67' text-anchor='middle' style='font-size: 14.00px;fill: #4D4D4D; font-family: "Arial";' textLength='54.46px' lengthAdjust='spacingAndGlyphs'>Residual</text>
+<text x='238.31' y='350.99' text-anchor='middle' style='font-size: 16.00px; font-family: "Arial";' textLength='192.98px' lengthAdjust='spacingAndGlyphs'>Random Effect Component</text>
+<text transform='translate(16.96,173.30) rotate(-90)' text-anchor='middle' style='font-size: 16.00px; font-family: "Arial";' textLength='199.21px' lengthAdjust='spacingAndGlyphs'>Proportion of Total Variance</text>
+<text x='436.88' y='149.66' style='font-size: 14.00px; font-family: "Arial";' textLength='72.36px' lengthAdjust='spacingAndGlyphs'>Component</text>
+<rect x='437.59' y='157.39' width='15.86' height='15.86' style='stroke-width: 1.07; stroke-linecap: butt; stroke-linejoin: miter; fill: #F8766D; fill-opacity: 0.80;' />
+<rect x='437.59' y='174.67' width='15.86' height='15.86' style='stroke-width: 1.07; stroke-linecap: butt; stroke-linejoin: miter; fill: #00BA38; fill-opacity: 0.80;' />
+<rect x='437.59' y='191.95' width='15.86' height='15.86' style='stroke-width: 1.07; stroke-linecap: butt; stroke-linejoin: miter; fill: #619CFF; fill-opacity: 0.80;' />
+<text x='459.64' y='169.63' style='font-size: 12.00px; font-family: "Arial";' textLength='42.02px' lengthAdjust='spacingAndGlyphs'>Country</text>
+<text x='459.64' y='186.91' style='font-size: 12.00px; font-family: "Arial";' textLength='105.40px' lengthAdjust='spacingAndGlyphs'>Country:Pondscape</text>
+<text x='459.64' y='204.19' style='font-size: 12.00px; font-family: "Arial";' textLength='46.69px' lengthAdjust='spacingAndGlyphs'>Residual</text>
+<text x='56.18' y='18.43' style='font-size: 18.00px; font-weight: bold; font-family: "Arial";' textLength='314.06px' lengthAdjust='spacingAndGlyphs'>Variance Partitioning in Mixed Model</text>
+</g>
+</svg>
