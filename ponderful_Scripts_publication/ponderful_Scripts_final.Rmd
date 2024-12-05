@@ -45,7 +45,8 @@ dom_landcover_nov$Country <- as.character(dom_landcover_nov$Country)
 # Initialize altregion as a copy of Country
 dom_landcover_nov$altregion <- dom_landcover_nov$Country
 
-dom_landcover_nov[dom_landcover_nov$Country %in% c('Switzerland','Belgium', 'Denmark', 'UK'), "altregion"] <- 'Atlantic'
+dom_landcover_nov[dom_landcover_nov$Country %in% c('Belgium', 'Denmark', 'UK'), "altregion"] <- 'Atlantic'
+dom_landcover_nov[dom_landcover_nov$Country %in% c('Switzerland','Germany'), "altregion"] <- 'Temperate'
 
 # Check the changes
 table(dom_landcover_nov$altregion)
@@ -739,7 +740,7 @@ tn_alt <-  lmer(log_TN ~  Natural_5.s + Aquatic_500.s + Cropland_500.s +
 summary(tn_alt)
 tab_model(tn_alt,show.intercept = TRUE,transform = NULL)
 
-VarCorr(tn_alt) %>%
+VarCorr(tn_alt_selected) %>%
   as_data_frame() %>%
   mutate(icc=vcov/sum(vcov)) 
 
@@ -750,7 +751,7 @@ tn_alt_selected<- lmer(log_TN ~ Cropland_500.s +
                            data = model_df)
 
 summary(tn_alt_selected)
-tab_model(tn_alt_selected)
+tab_model(tn_alt_selected,show.intercept = TRUE,transform = NULL)
 
 #TP 
 tp_alt<- glmer(TP~ Natural_5.s+Cropland_500.s +Animals_cont.s +Pastures.and.open.nature_500.s+
@@ -760,23 +761,27 @@ tp_alt<- glmer(TP~ Natural_5.s+Cropland_500.s +Animals_cont.s +Pastures.and.open
 tp_alt_selected <- glmer(TP~ Natural_5.s+Cropland_500.s +Animals_cont.s +
                               bio1.s + bio12.s+Depth.s+(1|altregion)+(1|altregion:Pondscape), family = Gamma(link = "log"), 
                data = model_df)
+table(model_df$altregion)
 summary(tp_alt_selected)
 tab_model(
-tp_alt_selected,show.intercept = TRUE,transform = NULL,digits.re = 3)
+tp_alt,show.intercept = TRUE,transform = NULL,digits.re = 3)
 
-VarCorr(tn_alt_selected) %>%
+VarCorr(tp_alt) %>%
   as_data_frame() %>%
   mutate(icc=vcov/sum(vcov)) 
 
 #random effect comparison
-test1 <-glmer(TP~ Natural_5.s+Cropland_500.s +Animals_cont.s +
-                              bio1.s + bio12.s+Depth.s+(1|altregion:Pondscape), family = Gamma(link = "log"), 
+test1 <-lmer(log_TN ~ Cropland_500.s +
+                            Depth.s +
+                             +bio12.s+(1|altregion), 
+                           data = model_df)
+test2 <-lmer(log_TN ~ Cropland_500.s +
+                            Depth.s +
+                             +bio12.s+(1|altregion:Pondscape), 
+                           data = model_df)
                data = model_df)
-test2 <-glmer(TP~ Natural_5.s+Cropland_500.s +Animals_cont.s +
-                              bio1.s + bio12.s+Depth.s+(1|altregion), family = Gamma(link = "log"), 
-               data = model_df)
-anova(tp_alt_selected,test1)
-anova(tp_alt_selected,test2,test1)
+anova(tp_alt,test1)
+anova(tn_alt_selected,test2,test1)
 anova(test1,test2)
 
 
