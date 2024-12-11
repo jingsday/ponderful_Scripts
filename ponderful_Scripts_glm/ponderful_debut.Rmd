@@ -1,0 +1,401 @@
+---
+title: "modelling"
+author: "Jing"
+date: "2024-12-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r Loading dataset and preparation}
+outwdir <- '~/ponderful_OUTPUT/'
+nutrients_df <- read.csv('~/input.txt')
+#Factors
+##Country as factors
+nutrients_df$Country <- as.factor(nutrients_df$Country)
+levels(nutrients_df$Country)
+
+##Alternative categories
+## Bio climatic regions
+nutrients_df$Country <- as.character(nutrients_df$Country)
+
+# Initialize altregion as a copy of Country
+nutrients_df$altregion <- nutrients_df$Country
+
+nutrients_df[nutrients_df$Country %in% c('Belgium', 'Denmark', 'UK'), "altregion"] <- 'Atlantic'
+nutrients_df[nutrients_df$Country %in% c('Switzerland','Germany'), "altregion"] <- 'Temperate'
+
+# Check the changes
+table(nutrients_df$altregion)
+
+##Factors and transformation 
+nutrients_df$altregion <- as.factor(nutrients_df$altregion)
+levels(nutrients_df$altregion)
+
+#Adding log_TN (and log_TP)
+nutrients_df$log_TN <- log(nutrients_df$TN,base=10)
+hist(nutrients_df$log_TN)
+shapiro.test(nutrients_df$log_TN)
+
+nutrients_df$log_TP <- log(nutrients_df$TP,base=10)
+hist(nutrients_df$log_TP)
+shapiro.test(nutrients_df$log_TP)
+```
+
+```{r Predictors selection, normalization and standarisation}
+
+transformar_columna <- function(x) {
+  perc <- rank(x, na.last = "keep") / (sum(!is.na(x)) + 1)  # Calcular los percentiles manteniendo los NA
+  result <- ifelse(!is.na(x), qnorm(perc), NA)  # Transformar los percentiles a la distribución normal, manteniendo los NA
+  return(result)}
+
+nutrients_df$Hydeoperiod_length.T<-transformar_columna(nutrients_df$Hydeoperiod_length)
+
+model_df <- nutrients_df[,c('Pondscape','Country','altregion','X','Y','TN','log_TN',
+                             'TP','log_TP','bio1.t','bio7.t','bio5.t','bio12.t',
+                             'Hydeoperiod_length.t','Hydeoperiod_length.T','Area.t',
+                             'Depth.t','Animals_cont.t', "Aquatic_500.t",   
+                             "Cropland_500.t","Forest_500.t","Pastures.and.open.nature_500.t" ,
+                             "Urban_500.t", "Natural_5.t",'dominant_landcover')]
+
+model_df[,c('bio1.s','bio7.s','bio5.s','bio12.s','Hydeoperiod_length.s',
+            'Animals_cont.s','Area.s','Depth.s',"Aquatic_500.s",  
+            "Cropland_500.s","Forest_500.s","Pastures.and.open.nature_500.s" ,
+            "Urban_500.s", "Natural_5.s")] <-scale(model_df[,c('bio1.t','bio7.t','bio5.t','bio12.t','Hydeoperiod_length.T',
+                    'Animals_cont.t','Area.t','Depth.t',"Aquatic_500.t",  
+                    "Cropland_500.t","Forest_500.t","Pastures.and.open.nature_500.t" ,
+                    "Urban_500.t", "Natural_5.t")], center = TRUE, scale = TRUE)
+
+model_df <-na.omit(model_df)
+```
+
+
+```{r correlation matrix}
+input ='Uruguay'
+corrplot(cor(model_df[model_df$Country != input, ][,c('TP','bio1.s','bio7.s','bio5.s','bio12.s','Hydeoperiod_length.s',
+                    'Animals_cont.s','Area.s','Depth.s',"Aquatic_500.s",  
+                    "Cropland_500.s","Forest_500.s","Pastures.and.open.nature_500.s" ,
+                    "Urban_500.s", "Natural_5.s")]), type = "upper", order = "hclust",tl.col = "black", tl.srt = 45, )
+
+```
+```{r TN GLM model}
+#(A) Including Uru
+TN_full_model <- glm(log_TN ~ Natural_5.s + Aquatic_500.s + Cropland_500.s +
+                            Pastures.and.open.nature_500.s +
+                             Urban_500.s + Animals_cont.s + Area.s + Depth.s +
+                             bio1.s+bio7.t+bio12.s, 
+                           data = model_df)
+summary(TN_full_model)
+tab_model(TN_full_model,transform=NULL,show.intercept = TRUE)
+BIC(TN_full_model)
+
+#model selected
+TN_full_model<- glm(formula = log_TN ~ Cropland_500.s + Depth.s +
+    bio12.s, data = model_df)
+
+summary(TN_full_model)
+tab_model(TN_full_model,transform=NULL,show.intercept = TRUE)
+BIC(TN_full_model)
+
+dev_resid <- residuals(TN_full_model,type="deviance")
+shapiro.test(dev_resid)
+
+glmfit <- cv.glm(data = model_df, glmfit = glm(formula = log_TN ~ Cropland_500.s + Depth.s + 
+    bio12.s, data = model_df),K = 5)
+glmfit$delta[2]
+
+#(B) Euro-medi 
+TN_euromedi_model <- glm(log_TN ~ Natural_5.s + Aquatic_500.s + Cropland_500.s +
+                            Pastures.and.open.nature_500.s +
+                             Urban_500.s + Animals_cont.s + Area.s + Depth.s +
+                             bio1.s+bio7.t+bio12.s, 
+                           data = model_df[model_df$Country!='Uruguay',])
+step(TN_euromedi_model)
+TN_euromedi_model <- glm(formula = log_TN ~ Natural_5.s + Aquatic_500.s + Cropland_500.s + 
+    Urban_500.s + Animals_cont.s + Area.s + Depth.s + bio1.s + 
+    bio7.t + bio12.s, data = model_df[model_df$Country != "Uruguay", 
+    ])
+BIC(TN_euromedi_model)
+
+#model selected
+TN_euromedi_model <- glm(formula = log_TN ~ Aquatic_500.s + Cropland_500.s + 
+   Animals_cont.s +Depth.s + 
+    bio7.t + bio12.s, data = model_df[model_df$Country != "Uruguay", 
+    ])
+
+summary(TN_euromedi_model)
+tab_model(TN_euromedi_model,transform=NULL,show.intercept = TRUE)
+BIC(TN_euromedi_model)
+
+#cross validation
+glmfit <- cv.glm(data = model_df[model_df$Country != "Uruguay", ], glmfit = TN_euromedi_model,K = 5)
+glmfit$delta[2]
+```
+
+
+```{r TP GLM model}
+#(A) Including Uru
+TP_full_model <- glm(TP ~ Natural_5.s + Aquatic_500.s + Cropland_500.s +
+                            Pastures.and.open.nature_500.s +
+                             Urban_500.s + Animals_cont.s + Area.s + Depth.s +
+                             bio1.s+bio7.t+bio12.s, family = Gamma(link = "log"),data = model_df)
+
+summary(TP_full_model)
+step(TP_full_model)
+TP_full_model<-  glm(formula = TP ~  Cropland_500.s + Depth.s + bio12.s+ Pastures.and.open.nature_500.s + Natural_5.s +
+    Animals_cont.s  + bio1.s, family = Gamma(link = "log"), 
+    data = model_df)
+
+tab_model(TP_full_model,show.intercept = TRUE,transform = NULL)
+
+#(B) Excluding Uru 
+TP_euromedi_model <-  glm(TP ~ Natural_5.s + Aquatic_500.s + Cropland_500.s +
+                            Pastures.and.open.nature_500.s +
+                             Urban_500.s + Animals_cont.s + Area.s + Depth.s +
+                             bio1.s+bio7.t+bio12.s, family = Gamma(link = "log"),
+                           data =  model_df[model_df$Country != "Uruguay", ])
+stepAIC(TP_euromedi_model)
+TP_euromedi_model<-glm(formula = TP ~ Natural_5.s + Cropland_500.s + Pastures.and.open.nature_500.s + 
+    Animals_cont.s + Depth.s + bio1.s + bio7.t + bio12.s, family = Gamma(link = "log"), 
+    data = model_df[model_df$Country != "Uruguay", ])
+
+tab_model(TP_euromedi_model,show.intercept = TRUE,transform = NULL)
+BIC(TP_euromedi_model)
+
+#model selection
+TP_euromedi_model<-glm(formula = TP ~  Cropland_500.s + Depth.s+bio12.s+Natural_5.s + Pastures.and.open.nature_500.s + 
+    Animals_cont.s  + bio1.s , family = Gamma(link = "log"), 
+    data = model_df[model_df$Country != "Uruguay", ])
+tab_model(TP_euromedi_model,show.intercept = TRUE,transform = NULL)
+summary(TP_euromedi_model)
+BIC(TP_euromedi_model)
+
+#cross validation
+glmfit <- cv.glm(TP_euromedi_model,data = model_df[model_df$Country != "Uruguay", ],K = 5)
+glmfit$delta[2]
+
+```
+
+```{r tp model function}
+
+tp_glm_analysis <- function(country, K) {
+  
+  # Step 1: Filter data for the specified country
+  df <- model_df[model_df$Country == country, ]
+  
+  # Step 2: Fit the initial GLM model
+  initial_model <- glm(formula = TP~   Natural_5.s+Pastures.and.open.nature_500.s +Cropland_500.s+Animals_cont.s +
+                         Depth.s+bio1.s+bio12.s,
+                       family = Gamma(link = "log"),
+                       data = df)
+  
+  print(summary(initial_model))
+  
+  selected_model <- stepAIC(initial_model, trace = FALSE)
+  #selected_model <- step(initial_model, direction = "both", k = log(nrow(df)))
+  # Print summary of the stepAIC model
+  print(summary(selected_model))
+  
+  # Generate and print the tab_model
+  tab_model(selected_model, show.intercept = TRUE, transform = NULL)
+  
+  # Step 5: Perform cross-validation on the selected model
+  cv_results <- cv.glm(data = df, glmfit = selected_model, K = K)
+  
+  # Output cross-validation delta
+  delta_value <- cv_results$delta[2]
+  cat("Cross-validation delta (adjusted):", delta_value, "\n")
+  
+  return(list(
+    initial_model = initial_model,
+    selected_model = selected_model,
+    cv_delta = delta_value
+  ))
+}
+
+```
+
+```{r Denmark}
+tp_denmark_results <- tp_glm_analysis(
+                            country = "Denmark", 
+                            K = 5)
+tab_model(tp_denmark_results$selected_model,transform = NULL,show.intercept = TRUE)
+tp_denmark_results$cv_delta
+```
+
+```{r}
+tn_glm_analysis <- function(country, K) {
+  
+  # Step 1: Filter data for the specified country
+  df <- model_df[model_df$Country == country, ]
+  
+  # Step 2: Fit the initial GLM model
+  initial_model <- glm(formula = log_TN~ Cropland_500.s+Aquatic_500.s+
+                           
+                             Animals_cont.s + Depth.s + bio7.s+
+                             bio12.s,
+                       data = df)
+  
+  print(summary(initial_model))
+  selected_model <- step(initial_model, direction = "both", k = log(nrow(df)))
+  #selected_model <- stepAIC(initial_model, trace = FALSE)
+  
+  # Print summary of the stepAIC model
+  print(summary(selected_model))
+  
+  # Generate and print the tab_model
+  tab_model(selected_model, show.intercept = TRUE, transform = NULL)
+  
+  # Step 5: Perform cross-validation on the selected model
+  cv_results <- cv.glm(data = df, glmfit = selected_model, K = K)
+  
+  # Output cross-validation delta
+  delta_value <- cv_results$delta[2]
+  cat("Cross-validation delta (adjusted):", delta_value, "\n")
+  
+  return(list(
+    initial_model = initial_model,
+    selected_model = selected_model,
+    cv_delta = delta_value
+  ))
+}
+```
+
+```{r TN-TP GLMM Section (A) Country +Pondscape}
+TN_mixed_1 <-lmer(formula = log_TN ~  Natural_5.s + Cropland_500.s +
+                            Pastures.and.open.nature_500.s +
+                             Animals_cont.s +Depth.s +
+                             bio1.s+bio7.s+bio12.s+
+                                 (1|Country) + (1|Country:Pondscape) , data = model_df,na.action = "na.fail") 
+summary(TN_mixed_1)
+tab_model(TN_mixed_1,show.intercept = TRUE,transform = NULL,digits.re = 4)
+
+TN_mixed_1_selected <-lmer(formula = log_TN ~  bio12.s +  Depth.s+Cropland_500.s+
+                                 (1|Country) + (1|Country:Pondscape) , data = model_df,na.action = "na.fail") 
+summary(TN_euromedi_mixed_1_selected)
+
+anova(TN_euromedi_mixed_1,TN_euromedi_mixed_1_selected)
+tab_model(TN_euromedi_mixed_1_selected,show.intercept = TRUE,transform = NULL,digits.re = 4)
+
+shapiro.test(residuals(TN_euromedi_mixed_1_selected))
+
+
+#random effect comparison
+test1 <-lmer(formula = log_TN ~  bio12.s +  Depth.s+Cropland_500.s+
+                                 (1|Country), data = model_df,na.action = "na.fail") 
+test2 <-lmer(formula = log_TN ~  bio12.s +  Depth.s+Cropland_500.s+
+                                 (1|Country:Pondscape), data = model_df,na.action = "na.fail") 
+anova(TN_euromedi_mixed_1_selected,test1)
+anova(TN_euromedi_mixed_1_selected,test2,test1)
+anova(test1,test2)
+
+#TP 
+TP_mixed_1 <-glmer(formula =TP ~   Natural_5.s+Cropland_500.s +Animals_cont.s
+                   +Pastures.and.open.nature_500.s+bio1.s + bio12.s+(1|Country)
+                   +Depth.s+(1|Country:Pondscape) , data = model_df, family =
+                              Gamma(link = "log"), na.action = "na.fail") 
+
+summary(TP_mixed_1)
+tab_model(TP_mixed_1,show.intercept = TRUE,transform = NULL)
+
+#random effect comparison
+test1 <-glmer(formula =TP ~   Natural_5.s+Cropland_500.s +Animals_cont.s +
+                              bio1.s + bio12.s+Depth.s+
+                                 (1|Country), data = model_df,na.action = "na.fail", family =
+                              Gamma(link = "log")) 
+test2 <-glmer(formula =TP ~   Natural_5.s+Cropland_500.s +Animals_cont.s +
+                              bio1.s + bio12.s+Depth.s+
+                                 (1|Country:Pondscape), data = model_df,na.action = "na.fail", family =
+                              Gamma(link = "log")) 
+anova(TP_euromedi_mixed_1,test1)
+anova(test1,test2,TP_euromedi_mixed_1)
+anova(test1,test2)
+anova(test1,TP_full_model)
+anova(test2,TP_full_model)
+anova(test2,TP_euromedi_mixed_1)
+
+
+#variance
+ranef(TN_euromedi_mixed_4_selected)
+tab_model(TN_euromedi_mixed_4_selected,show.intercept = TRUE,transform = NULL)
+
+
+VarCorr(TN_euromedi_mixed_4_selected)
+rand(TN_euromedi_mixed_4_selected)
+
+#Variance partition
+VarCorr(TP_mixed_1) %>%
+  as_data_frame()
+
+VarCorr(TP_mixed_1) %>%
+  as_data_frame() %>%
+  mutate(icc=vcov/sum(vcov)) 
+
+VarCorr(TN_euromedi_mixed_1_selected) %>% 
+  as_data_frame() %>%
+  mutate(
+    total_vcov = sum(vcov),
+    partitioned_variance = (vcov / total_vcov) * 100
+  ) %>%
+  select(grp, vcov, partitioned_variance)
+TP_mixed_1
+# Extract variance components
+var_components <- as.data.frame(VarCorr(TN_mixed_1))
+var_components$Proportion <- round(var_components$vcov / sum(var_components$vcov),3)
+```
+
+```{r TN-TP bioclimatic region}
+
+tn_alt <-  lmer(log_TN ~  Natural_5.s + Aquatic_500.s + Cropland_500.s +
+                            Pastures.and.open.nature_500.s +
+                             Urban_500.s + Animals_cont.s + Area.s + Depth.s +
+                             bio1.s+bio7.s+bio12.s+(1|altregion)+(1|altregion:Pondscape), 
+                           data = model_df)
+
+summary(tn_alt)
+tab_model(tn_alt,show.intercept = TRUE,transform = NULL)
+
+VarCorr(tn_alt_selected) %>%
+  as_data_frame() %>%
+  mutate(icc=vcov/sum(vcov)) 
+
+table(model_df$altregion,model_df$Country)
+tn_alt_selected<- lmer(log_TN ~ Cropland_500.s +
+                            Depth.s +
+                             +bio12.s+(1|altregion)+(1|altregion:Pondscape), 
+                           data = model_df)
+
+summary(tn_alt_selected)
+tab_model(tn_alt_selected,show.intercept = TRUE,transform = NULL)
+
+#TP 
+tp_alt<- glmer(TP~ Natural_5.s+Cropland_500.s +Animals_cont.s +Pastures.and.open.nature_500.s+
+                              bio1.s + bio12.s+Depth.s+(1|altregion)+(1|altregion:Pondscape), family = Gamma(link = "log"), 
+               data = model_df)
+
+tp_alt_selected <- glmer(TP~ Natural_5.s+Cropland_500.s +Animals_cont.s +
+                              bio1.s + bio12.s+Depth.s+(1|altregion)+(1|altregion:Pondscape), family = Gamma(link = "log"), 
+               data = model_df)
+table(model_df$altregion)
+summary(tp_alt_selected)
+tab_model(
+tp_alt,show.intercept = TRUE,transform = NULL,digits.re = 3)
+
+VarCorr(tp_alt) %>%
+  as_data_frame() %>%
+  mutate(icc=vcov/sum(vcov)) 
+
+#random effect comparison
+test1 <-glmer(TP~ Natural_5.s+Cropland_500.s +Animals_cont.s +Pastures.and.open.nature_500.s+
+                              bio1.s + bio12.s+Depth.s+(1|altregion), family = Gamma(link = "log"), 
+               data = model_df)
+test2 <-glmer(TP~ Natural_5.s+Cropland_500.s +Animals_cont.s +Pastures.and.open.nature_500.s+
+                              bio1.s + bio12.s+Depth.s+(1|altregion:Pondscape), family = Gamma(link = "log"), 
+               data = model_df)
+anova(tp_alt,test1)
+anova(tp_alt,test2,test1)
+anova(test1,test2)
+```
+
