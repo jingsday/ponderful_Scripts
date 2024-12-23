@@ -14,8 +14,13 @@ d2 <- d[,c("TN.t","TP.t","bio1","bio4","bio5","bio6","bio7","bio12","bio15","bio
                                  'Area','Depth','Hydeoperiod_length',"Pond_dries", "Aquatic_500",
                                  "Cropland_500","Forest_500","Pastures.and.open.nature_500" ,
                                  "Urban_500", "Natural_5",'Animals_cont')]
+model_df <- model_df %>%
+  mutate(TP.t = log10(TP),  
+         TN.t = log10(TN))  
 
-
+model_df_2 <- model_df[,c("TN.t","TP.t",'bio1.s','bio7.s','bio5.s','bio12.s','Hydeoperiod_length.s','Animals_cont.s','Area.s','Fish.s','Depth.s',"Aquatic_500.s",   
+                     "Cropland_500.s","Forest_500.s","Pastures.and.open.nature_500.s" ,
+                     "Urban_500.s", "Natural_5.s")]
 
 colnames(d2) <-c("TN","TP","Annual Mean Temperature","Temperature Seasonality","Max Temperature of Warmest Month","Min Temperature of Coldest Month","Temperature Annual Range",
 "Annual Precipitation","Precipitation Seasonality","Precipitation of Driest Quarter","Area","Depth","Hydroperiod length","Temporality","Aquatic","Cropland",
@@ -30,9 +35,12 @@ library(ggplot2)
 #TN
 ####################################################
 
+str(model_df_2)
 d2N <- na.omit(d2)
-response <- d2N$TN            
-predictors <- d2N[, 3:21]    
+response <- model_df_2$TN.t            
+predictors <- model_df_2[, 3:17]    
+predictors <- d2N[, c('Cropland','Depth','Annual Precipitation')]    
+
 data <- data.frame(response, predictors)
 
 set.seed(123)  
@@ -47,11 +55,23 @@ brt_TN <- gbm.step(
   bag.fraction = 0.75    # Proportion of data used for training at each step
 )
 
+brt_simp <- gbm.simplify(brt_TN, n.drops = 16)
+
+
 print(brt_TN)
 print(brt_TN$n.trees)
 summary(brt_TN)
+dev.off()
+gbm.plot(brt_TN, n.plots = 3, write.title=FALSE)  
+gbm.plot.fits(brt_TN,1)
+gbm.plot(brt_TN, i.var = 1, j.var = 2)  # Interaction between two predictors
 
-gbm.plot(brt_TN, n.plots = 19, smooth = TRUE)  
+plot(brt_TN$residuals)  # Check residuals
+
+find.int <- gbm.interactions(brt_TN)
+find.int$interactions
+
+
 
 explained_deviance <- (brt_TN$self.statistics$mean.null - brt_TN$self.statistics$mean.resid) / brt_TN$self.statistics$mean.null * 100
 
