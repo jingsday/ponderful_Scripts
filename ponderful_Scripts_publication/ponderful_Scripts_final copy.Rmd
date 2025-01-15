@@ -986,6 +986,8 @@ test_2 <- glmer(formula =TP ~   Cropland_500.s +
                               Gamma(link = "log"),
                            data = model_df[model_df$Country!='Uruguay',])
 
+tab_model(test_2,show.intercept = TRUE,transform = NULL,digits.re = 4)#,file = paste0(outwdir,'TN_euromedi_glmm.doc'))
+
 anova(TP_euromedi_mixed_selected,test_2,test_1)
 anova(TP_euromedi_mixed_selected,test_2)
 
