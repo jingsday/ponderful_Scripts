@@ -36,7 +36,11 @@ dom_landcover_nov <- read.csv('~/PhD_project/project_PONDERFUL/ponderful_DATA/po
 dom_landcover_nov$Country <- as.factor(dom_landcover_nov$Country)
 levels(dom_landcover_nov$Country)
 
-##Alternative categories
+#Adding Depth > 200 cm Jan 20th
+filtered <- dom_landcover_nov[dom_landcover_nov$Depth>=200,]
+table(filtered$Country)
+dom_landcover_nov <-dom_landcover_nov[dom_landcover_nov$Depth<200,]
+##Alternative categories##Alternative categories##Alternative categories
 ## Bio climatic regions
 dom_landcover_nov$Country <- as.character(dom_landcover_nov$Country)
 
@@ -206,6 +210,11 @@ high_correlations <- screen_corr(country = "Belgium")
 high_correlations
 ```
 
+```{r}
+hist(dom_landcover_nov$Depth)
+
+
+```
 
 ```{r TN GLM model}
 #(A) Including Uru
@@ -749,10 +758,16 @@ tab_model(TN_mixed_1,show.intercept = TRUE,transform = NULL,digits.re = 4)
 
 TN_mixed_1_selected <-lmer(formula = log_TN ~  bio12.s +  Depth.s+Cropland_500.s+
                                  (1|Country) + (1|Country:Pondscape) , data = model_df,na.action = "na.fail") 
-summary(TN_euromedi_mixed_1_selected)
+summary(TN_mixed_1_selected)
 
-anova(TN_euromedi_mixed_1,TN_euromedi_mixed_1_selected)
-tab_model(TN_euromedi_mixed_1_selected,show.intercept = TRUE,transform = NULL,digits.re = 4)#,file=paste0(outwdir,'TN_GLMM.doc'))
+#Depth outliers removal
+TN_mixed_1_selected <-lmer(formula = log_TN ~   Depth.s+Cropland_500.s+Animals_cont.s+
+                                 (1|Country) + (1|Country:Pondscape) , data = model_df,na.action = "na.fail") 
+summary(TN_mixed_1_selected)
+
+anova(TN_mixed_1,TN_mixed_1_selected)
+
+tab_model(TN_mixed_1_selected,show.intercept = TRUE,transform = NULL,digits.re = 4,file=paste0(outwdir,'TN_GLMM_depth_outliers_removed.doc'))
 
 dotplot(ranef(TN_euromedi_mixed_1))
 shapiro.test(residuals(TN_euromedi_mixed_1_selected))
@@ -783,6 +798,10 @@ tab_model(TP_mixed_1,show.intercept = TRUE,transform = NULL)#,file = paste0(outw
 # summary(TP_euromedi_mixed_1_selected)
 # tab_model(TP_euromedi_mixed_1_selected,show.intercept = TRUE,transform = NULL)
 
+TP_euromedi_mixed_1_selected <-glmer(formula =TP ~   Natural_5.s+Cropland_500.s +Animals_cont.s +
+                             bio1.s + bio12.s+(1|Country) +Depth.s+(1|Country:Pondscape) , data = model_df,
+                             family =Gamma(link = "log"), na.action = "na.fail")
+tab_model(TP_euromedi_mixed_1_selected,show.intercept = TRUE,transform = NULL)#,file = paste0(outwdir,'TP_glmm.doc'))
 
 #random effect comparison
 test1 <-glmer(formula =TP ~   Natural_5.s+Cropland_500.s +Animals_cont.s +
@@ -793,12 +812,15 @@ test2 <-glmer(formula =TP ~   Natural_5.s+Cropland_500.s +Animals_cont.s +
                               bio1.s + bio12.s+Depth.s+
                                  (1|Country:Pondscape), data = model_df,na.action = "na.fail", family =
                               Gamma(link = "log")) 
+
+tab_model(TP_euromedi_mixed_1_selected,show.intercept = TRUE,transform = NULL,file = paste0(outwdir,'TP_glmm_depth_outlier_removed.doc'))
+
 anova(TP_euromedi_mixed_1,test1)
-anova(test1,test2,TP_euromedi_mixed_1)
+anova(test1,test2,TP_euromedi_mixed_1_selected)
 anova(test1,test2)
 anova(test1,TP_full_model)
 anova(test2,TP_full_model)
-anova(test2,TP_euromedi_mixed_1)
+anova(test2,TP_euromedi_mixed_1_selected)
 
 
 #variance
