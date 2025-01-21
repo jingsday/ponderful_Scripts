@@ -767,7 +767,7 @@ summary(TN_mixed_1_selected)
 
 anova(TN_mixed_1,TN_mixed_1_selected)
 
-tab_model(TN_mixed_1_selected,show.intercept = TRUE,transform = NULL,digits.re = 4,file=paste0(outwdir,'TN_GLMM_depth_outliers_removed.doc'))
+tab_model(TN_mixed_1_selected,show.intercept = TRUE,transform = NULL,digits.re = 4)#,file=paste0(outwdir,'TN_GLMM_depth_outliers_removed.doc'))
 
 dotplot(ranef(TN_euromedi_mixed_1))
 shapiro.test(residuals(TN_euromedi_mixed_1_selected))
@@ -801,7 +801,7 @@ tab_model(TP_mixed_1,show.intercept = TRUE,transform = NULL)#,file = paste0(outw
 TP_euromedi_mixed_1_selected <-glmer(formula =TP ~   Natural_5.s+Cropland_500.s +Animals_cont.s +
                              bio1.s + bio12.s+(1|Country) +Depth.s+(1|Country:Pondscape) , data = model_df,
                              family =Gamma(link = "log"), na.action = "na.fail")
-tab_model(TP_euromedi_mixed_1_selected,show.intercept = TRUE,transform = NULL)#,file = paste0(outwdir,'TP_glmm.doc'))
+tab_model(TP_euromedi_mixed_1_selected,show.intercept = TRUE,transform = NULL,digits.re = 4)#,file = paste0(outwdir,'TP_glmm.doc'))
 
 #random effect comparison
 test1 <-glmer(formula =TP ~   Natural_5.s+Cropland_500.s +Animals_cont.s +
@@ -813,7 +813,7 @@ test2 <-glmer(formula =TP ~   Natural_5.s+Cropland_500.s +Animals_cont.s +
                                  (1|Country:Pondscape), data = model_df,na.action = "na.fail", family =
                               Gamma(link = "log")) 
 
-tab_model(TP_euromedi_mixed_1_selected,show.intercept = TRUE,transform = NULL,file = paste0(outwdir,'TP_glmm_depth_outlier_removed.doc'))
+tab_model(TP_euromedi_mixed_1_selected,show.intercept = TRUE,transform = NULL)#,file = paste0(outwdir,'TP_glmm_depth_outlier_removed.doc'))
 
 anova(TP_euromedi_mixed_1,test1)
 anova(test1,test2,TP_euromedi_mixed_1_selected)
