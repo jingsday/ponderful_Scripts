@@ -16,6 +16,12 @@ glmm_df_depth_natural_nonna[glmm_df_depth_natural_nonna$Pond_dries == '0','Pond_
 glmm_df_depth_natural_nonna[glmm_df_depth_natural_nonna$Pond_dries == '1','Pond_dries_cat'] = 'Semi-P'
 glmm_df_depth_natural_nonna[glmm_df_depth_natural_nonna$Pond_dries == '2','Pond_dries_cat'] = 'Temporaty'
 
+data_dir <- '/Users/lidiayung/PhD_project/project_PONDERFUL/ponderful_DATA/'
+id <-  read.csv(paste0(data_dir,'ponderful_DATA_updated/D2.4_PondID_20240124.csv'))
+
+glmm_df_depth_natural_nonna <- merge(glmm_df_depth_natural_nonna,id[,c('Pondscape','Pond_ID')],by='Pond_ID',all.x=T)
+
+write.csv(glmm_df_depth_natural_nonna,paste0(data_dir,'glmm_strata_natural_5_filleds.csv'))
 ```
 
 
@@ -42,7 +48,7 @@ corrplot(cor(na.omit(df_modelling[,c("Pond_dries","log_TN","log_TP",'Animals_con
 round(cor(na.omit(df_modelling[,c("Pond_dries","log_TN","log_TP",'Animals_cont.s',
                                             'Depth.s',"Aquatic_500.s",
                                             "Cropland_500.s","Forest_500.s","Pastures.and.open.nature_500.s" ,
-                                            "Urban_500.s", "natural_5_filled.s","MeanT.s","sum_P.s")]),2))
+                                            "Urban_500.s", "natural_5_filled.s","MeanT.s","sum_P.s")])),2)
 
 ```
 
@@ -105,6 +111,10 @@ tab_model(TN_glmm_step_more_simplified)
 summary(cv(TN_glmm_step_more_simplified,
    k = 5,
    seed = 5240))
+
+#
+
+
 ```
 
 
