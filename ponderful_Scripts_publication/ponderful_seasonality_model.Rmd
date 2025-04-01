@@ -91,6 +91,7 @@ hist(model_df_valid$sum_P.t)
 shapiro.test(model_df_valid$sum_P.t)
 
 ```
+
 ```{r Quantile transformation}
 transformar_columna <- function(x) {
   perc <- rank(x, na.last = "keep") / (sum(!is.na(x)) + 1)  # Calcular los percentiles manteniendo los NA
@@ -104,24 +105,23 @@ model_df_valid$Cropland_500.t<-transformar_columna(model_df_valid$Cropland_500)
 model_df_valid$Pastures.and.open.nature_500.t<-transformar_columna(model_df_valid$Pastures.and.open.nature_500)
 model_df_valid$Urban_500.t<-transformar_columna(model_df_valid$Urban_500)
 model_df_valid$Forest_500.t<-transformar_columna(model_df_valid$Forest_500)
-
-
+model_df_valid$post_Emerse_pond.t<-transformar_columna(model_df_valid$post_Emerse_pond)
 ```
 
 ```{r Scale}
 model_df_valid[,c('Animals_cont.s','Depth.s',"Aquatic_500.s",  
             "Cropland_500.s","Forest_500.s","Pastures.and.open.nature_500.s" ,
-            "Urban_500.s", "Natural_5.s","MeanT.s","sum_P.s")] <-scale(model_df_valid[,c(
+            "Urban_500.s", "Natural_5.s","MeanT.s","sum_P.s", "post_Emerse_pond.s")] <-scale(model_df_valid[,c(
                     'Animals_cont.t','Depth.t',"Aquatic_500.t",  
                     "Cropland_500.t","Forest_500.t","Pastures.and.open.nature_500.t" ,
-                    "Urban_500.t", "Natural_5.t","MeanT.t","sum_P.t")], center = TRUE, scale = TRUE)
+                    "Urban_500.t", "Natural_5.t","MeanT.t","sum_P.t","post_Emerse_pond.t")], center = TRUE, scale = TRUE)
 
 glmm_df <- model_df_valid[,c("Pond_ID" ,"PondCode","season_col"  ,"year","Country",
                              "Strat","Pond_dries","log_TN","log_TP",'Animals_cont.s','Depth.s',"Aquatic_500.s",
                              "Cropland_500.s","Forest_500.s","Pastures.and.open.nature_500.s" ,
-                             "Urban_500.s", "Natural_5.s","MeanT.s","sum_P.s")]
+                             "Urban_500.s", "Natural_5.s","MeanT.s","sum_P.s","post_Emerse_pond.s")]
 
-#write.csv(model_df_valid,paste0(data_dir,'ponderful_hydro_seasonality_glmm.csv'))
+write.csv(model_df_valid,paste0(data_dir,'ponderful_hydro_seasonality_glmm.csv'))
 ```
 
 ```{r Depth missing values}
@@ -176,5 +176,8 @@ glmm_df_depth_natural <- glmm_df_depth_nonna[!is.na(glmm_df_depth_nonna$natural_
 glmm_df_depth_natural[is.na(glmm_df_depth_natural$Strat),]#36 
 #check correlation
 glmm_df_depth_natural_nonna <-  glmm_df_depth_natural[!is.na(glmm_df_depth_natural$Strat),] #682
+
+write.csv(glmm_df_depth_natural_nonna, paste0(data_dir,'glmm_strata_natural_5_filleds.csv'))
+
 ```
 

@@ -7,125 +7,143 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+data_dir <- '/Users/lidiayung/PhD_project/project_PONDERFUL/ponderful_OUTPUT/ponderful_seasonility/'
 
-glmm_df_depth_natural_nonna <- read.csv('glmm_strata_natural_5_filleds.csv')
+glmm_df_depth_natural_nonna <- read.csv(paste0(data_dir,'glmm_strata_natural_5_filleds.csv'))
+
+
+glmm_df_depth_natural_nonna[glmm_df_depth_natural_nonna$Pond_dries == '0','Pond_dries_cat'] = 'Permernant'
+glmm_df_depth_natural_nonna[glmm_df_depth_natural_nonna$Pond_dries == '1','Pond_dries_cat'] = 'Semi-P'
+glmm_df_depth_natural_nonna[glmm_df_depth_natural_nonna$Pond_dries == '2','Pond_dries_cat'] = 'Temporaty'
+
 ```
 
 
 ```{r}
-corrplot(cor(glmm_df_depth_natural_nonna[,c("Pond_dries","log_TN","log_TP",'Animals_cont.s',
+library(corrplot)
+glmm_df_depth_natural_nonna[is.na(glmm_df_depth_natural_nonna$post_Emerse_pond.s),]
+
+df_modelling <- glmm_df_depth_natural_nonna[,c("Pond_dries",
+                                               "Pond_dries_cat","PondCode","Country","season_col","year","log_TN","log_TP",
+                                               'Animals_cont.s', 'Depth.s',"Aquatic_500.s",
+                                               "Cropland_500.s","Forest_500.s","Pastures.and.open.nature_500.s" ,
+                                               "Urban_500.s", "natural_5_filled.s","MeanT.s","sum_P.s","post_Emerse_pond.s","Strat")]
+
+colSums(is.na(df_modelling))
+
+corrplot(cor(na.omit(df_modelling[,c("Pond_dries","log_TN","log_TP",'Animals_cont.s',
                                             'Depth.s',"Aquatic_500.s",
-                         "Cropland_500.s","Forest_500.s","Pastures.and.open.nature_500.s" ,
-                         "Urban_500.s", "natural_5_filled.s","MeanT.s","sum_P.s")]), 
+                                            "Cropland_500.s","Forest_500.s","Pastures.and.open.nature_500.s" ,
+                                            "Urban_500.s", "natural_5_filled.s","MeanT.s","sum_P.s")])), 
          type = "upper", order = "hclust",tl.col ="black", tl.srt = 45 )
 
 
-round(cor(glmm_df_depth_natural_nonna[,c("season_col","Pond_dries","log_TN","log_TP",'Animals_cont.s',
+
+round(cor(na.omit(df_modelling[,c("Pond_dries","log_TN","log_TP",'Animals_cont.s',
                                             'Depth.s',"Aquatic_500.s",
-                         "Cropland_500.s","Forest_500.s","Pastures.and.open.nature_500.s" ,
-                         "Urban_500.s", "natural_5_filled.s","MeanT.s","sum_P.s")]),2)
+                                            "Cropland_500.s","Forest_500.s","Pastures.and.open.nature_500.s" ,
+                                            "Urban_500.s", "natural_5_filled.s","MeanT.s","sum_P.s")]),2))
 
 ```
 
 
-```{r GLM selecting important fixed effect}
-library(nlme)
-
-TN_glm_model <- glm(formula = log_TN ~ natural_5_filled.s + Cropland_500.s + 
-                 Forest_500.s + Aquatic_500.s + Urban_500.s + 
-                 Animals_cont.s + Depth.s + sum_P.s + Strat + MeanT.s + 
-                 season_col,
-                 data = glmm_df_depth_natural_nonna, na.action = "na.fail")
-step(TN_glm_model)
-
-
-TN_glm_model_step <-  glm(formula = log_TN ~ Cropland_500.s + Animals_cont.s + Depth.s + 
-    sum_P.s + Strat + season_col, data = glmm_df_depth_natural_nonna, 
-    na.action = "na.fail")
-
-
-tab_model(TN_glm_model_step)
-
-
-```
-
-
-
-```{r TN GLMM}
+```{r Stratification involved}
 library(lmerTest)
 library(sjPlot)
+df_modelling <- na.omit(df_modelling)
+TN_glmm <- lmer(
+  formula = log_TN ~ year+ season_col * (natural_5_filled.s + Cropland_500.s + 
+                 Depth.s + sum_P.s + Strat + MeanT.s +Pond_dries_cat + post_Emerse_pond.s) 
+  +Forest_500.s + Aquatic_500.s + Urban_500.s +Animals_cont.s+(1 | PondCode), data = df_modelling, na.action = "na.fail")
 
-#correlation indicates high correlation between
-#Pond_dries(out, ~depth 0.71), pasture(out, ~cropland 0.82) ,meanT ~ sumP (0.81).
-length(unique(glmm_df_depth_natural_nonna$PondCode))
+step_model <- step(TN_glmm)
+step_model
+TN_glmm_step <- lmer(log_TN ~ season_col + Cropland_500.s + Depth.s + sum_P.s + 
+                       Strat + MeanT.s + Pond_dries + post_Emerse_pond.s + (1 | PondCode) + 
+                       season_col:Depth.s + season_col:MeanT.s + 
+                       season_col:Pond_dries + season_col:post_Emerse_pond.s,
+                   data = df_modelling, na.action = "na.fail")
+
+TN_glmm_step <- lmer(log_TN ~ season_col + Cropland_500.s + Depth.s + sum_P.s + 
+                       Strat + MeanT.s + Pond_dries_cat + post_Emerse_pond.s + 
+                       (1 | PondCode) + season_col:Depth.s + season_col:MeanT.s + 
+                       season_col:Pond_dries_cat + season_col:post_Emerse_pond.s,
+                   data = df_modelling, na.action = "na.fail")
+
+tab_model(TN_glmm_step)
+
+BIC(TN_glmm)
+BIC(TN_glmm_step)
+
+library("cv")
+summary(cv(TN_glmm_step,
+   k = 10,
+   seed = 5240))
+
+drop1(TN_glmm_step, test = "Chisq")
+
+TN_glmm_step_simplified <- lmer(log_TN ~ season_col + Cropland_500.s + Depth.s + sum_P.s +
+                                 Strat + MeanT.s + Pond_dries + post_Emerse_pond.s +
+                                 season_col:MeanT.s + season_col:Pond_dries + (1 | PondCode),
+                                 data = df_modelling, REML = FALSE)
+
+AIC(TN_glmm_step, TN_glmm_step_simplified)
+BIC(TN_glmm_step, TN_glmm_step_simplified)
+
+tab_model(TN_glmm_step_simplified)
+
+drop1(TN_glmm_step_simplified, test = "Chisq")
 
 
-table(glmm_df_depth_natural_nonna$Country,glmm_df_depth_natural_nonna$year)
+TN_glmm_step_more_simplified <- lmer(log_TN ~ season_col + Cropland_500.s + Depth.s + 
+                                     sum_P.s + Strat + MeanT.s + Pond_dries + 
+                                     season_col:MeanT.s + season_col:Pond_dries + 
+                                     (1 | PondCode), 
+                                     data = df_modelling, REML = FALSE)
 
-glmm_df_depth_natural_nonna <- merge(glmm_df_depth_natural_nonna,dom_landcover_nov[,c('Pondscape','Pond_ID')],by='Pond_ID',all.x=T)
-
-
-TN_mixed <- lmer(formula = log_TN ~ natural_5_filled.s + Cropland_500.s + 
-                 Forest_500.s + Aquatic_500.s + Urban_500.s + 
-                 Animals_cont.s + Depth.s + sum_P.s + Strat + MeanT.s + 
-                 season_col +  # Season as a fixed effect
-                 (1|year:PondCode) +  # Year as a random effect within PondCode
-                 (1|Country) +  # Country as a random effect
-                 (1|Pondscape) +  # Pondscape as a random effect
-                 (1|PondCode),  # PondCode as a random effect
-                 data = glmm_df_depth_natural_nonna, na.action = "na.fail")
-
-
-TN_mixed <- lmer(formula = log_TN ~ natural_5_filled.s + Cropland_500.s + 
-                 Forest_500.s + Aquatic_500.s + Urban_500.s + 
-                 Animals_cont.s + Depth.s + sum_P.s + Strat + MeanT.s + 
-                 season_col +  # Season as a fixed effect
-                 (1|year:PondCode) +  # Year as a random effect within PondCode
-                 (1|PondCode),  # PondCode as a random effect
-                 data = glmm_df_depth_natural_nonna, na.action = "na.fail")
-
-
-TN_mixed_1 <- lmer(formula = log_TN ~Cropland_500.s + 
-                 Animals_cont.s + Depth.s + sum_P.s + Strat + MeanT.s + 
-                 season_col +  # Season as a fixed effect
-                 (1|year:PondCode) +  # Year as a random effect within PondCode
-                 (1|Country) +  # Country as a random effect
-                 (1|Pondscape) +  # Pondscape as a random effect
-                 (1|PondCode),  # PondCode as a random effect
-                 data = glmm_df_depth_natural_nonna, na.action = "na.fail")
-
-
-summary(TN_mixed)
-
-tab_model(TN_mixed_1)
-
-AIC(TN_mixed)
-
-write.csv(glmm_df_depth_natural_nonna,paste0(data_dir,'glmm_strata_natural_5_filleds.csv'))
-
+tab_model(TN_glmm_step_more_simplified)
+summary(cv(TN_glmm_step_more_simplified,
+   k = 5,
+   seed = 5240))
 ```
+
 
 ```{r TP GLMM}
 
-TP_mixed <- lmer(formula = log_TP ~ natural_5_filled.s + Cropland_500.s + 
-                 Forest_500.s + Aquatic_500.s + Urban_500.s + 
-                 Animals_cont.s + Depth.s + sum_P.s + Strat + MeanT.s + 
-                 season_col +  # Season as a fixed effect
-                 (1|year:PondCode) +  # Year as a random effect within PondCode
-                 (1|Country) +  # Country as a random effect
-                 (1|Pondscape) +  # Pondscape as a random effect
-                 (1|PondCode),  # PondCode as a random effect
-                 data = glmm_df_depth_natural_nonna, na.action = "na.fail") #singular this way 
+TP_glmm <- lmer(
+  formula = log_TP ~ year+ season_col * (natural_5_filled.s + Cropland_500.s + 
+                 Depth.s + sum_P.s + Strat + MeanT.s+Pond_dries+post_Emerse_pond.s) 
+  + Forest_500.s + Aquatic_500.s + Urban_500.s+ Animals_cont.s + 
+    (1 | PondCode),data = df_modelling, na.action = "na.fail"
+)
 
+step_model <- step(TP_glmm)
+step_model
 
+TP_glmm_step <- lmer(log_TP ~ season_col + Cropland_500.s + Depth.s + sum_P.s + Forest_500.s + 
+                       (1 | PondCode) + season_col:Depth.s + season_col:sum_P.s,
+                      data = df_modelling,
+                      na.action = "na.fail")
 
+tab_model(TP_glmm_step)
+summary(cv(TP_glmm_step,
+   k = 10,
+   seed = 5240))
 
-summary(TP_mixed)
-
-tab_model(TP_mixed)
+drop1(TP_glmm_step, test = "Chisq")
 
 
 ```
 
 
+```{r Hydro period}
+
+hydro_model <- lmer(log_TN~ year+season_col*(Pond_dries_cat)+ (1|PondCode),data = df_modelling, na.action = "na.fail" )
+
+tab_model(hydro_model)
+
+step_model <- step(hydro_model)
+
+#code ponds dry as names
+```
 
