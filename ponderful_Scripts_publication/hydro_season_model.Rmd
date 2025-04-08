@@ -1,0 +1,183 @@
+---
+title: "hydro_season_model"
+author: "Jing"
+date: "2025-04-08"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+glmm_seasonality_df <- read.csv('/Users/lidiayung/Downloads/model_df_nat5_filled_strat_final.csv')
+
+
+
+
+
+table(glmm_season_tp_df$pond_dries)
+
+glmm_season_tp_df[glmm_season_tp_df$PondCode == 'MUN_105','pond_dries'] <- 1
+
+table(glmm_season_tp_df$Strat)
+glmm_season_tp_df$Pond_dries_cat <- 0
+
+glmm_season_tp_df <- glmm_season_tp_df %>%
+  mutate(
+    Pond_dries_cat = case_when(
+      pond_dries == 0 ~ "Permanent",
+      pond_dries == 1 ~ 'Semi-Permanent',
+      pond_dries == 2 ~ 'Temporary'
+    )
+  )
+
+
+glmm_season_tp_df <-merge(glmm_season_tp_df,dom_landcover_nov[,c('Pondscape','PondCode','Country')],
+                          by='PondCode',all.x=T)
+                                                             
+```
+
+
+```{r}
+library(corrplot)
+
+df_modelling$
+df_modelling <- glmm_season_tp_df[,c("PondCode","Country","Pondscape","Pond_dries_cat",
+                                     "season_col","log_TN","log_TP","Area.s",
+                                     'Animals_cont.s', 'Depth.s',"Aquatic_500.s",
+                                     "Cropland_500.s","Forest_500.s","Pastures.and.open.nature_500.s" ,
+                                     "Urban_500.s",
+                                     "Natural_5_filled.s","MeanT.s","sum_P.s","post_Emerse_pond.s","Strat")]
+
+colSums(is.na(df_modelling))
+
+corrplot(cor(na.omit(df_modelling[,c("log_TN","log_TP",'Animals_cont.s',
+                                            'Depth.s',"Aquatic_500.s",
+                                            "Cropland_500.s","Forest_500.s","Pastures.and.open.nature_500.s" ,
+                                            "Urban_500.s", "Natural_5_filled.s","MeanT.s","sum_P.s")])), 
+         type = "upper", order = "hclust",tl.col ="black", tl.srt = 45 )
+
+
+
+round(cor(na.omit(df_modelling[,c("log_TN","log_TP",'Animals_cont.s',
+                                            'Depth.s',"Aquatic_500.s",
+                                            "Cropland_500.s","Forest_500.s","Pastures.and.open.nature_500.s" ,
+                                            "Urban_500.s", "Natural_5_filled.s","MeanT.s","sum_P.s")])),2)
+
+```
+
+
+
+```{r Stratification involved}
+library(lmerTest)
+library(sjPlot)
+
+###theme_bw() !!!!!!!!!!!!!
+
+df_modelling <- df_modelling[,-c(20)]
+
+df_modelling <- na.omit(df_modelling)
+length(unique(df_modelling$PondCode))
+
+TN_glmm <- lmer(
+  formula = log_TN ~season_col * (Natural_5_filled.s + Cropland_500.s + 
+                 Depth.s + sum_P.s +  MeanT.s +Pond_dries_cat + post_Emerse_pond.s) 
+  +Forest_500.s + Aquatic_500.s + Urban_500.s +Animals_cont.s+(1 | PondCode)+ (1|Pondscape:Country)+(1|Country), 
+  data = df_modelling, na.action = "na.fail")
+
+step_model <- step(TN_glmm)
+
+TN_glmm <- lmer(
+  formula = log_TN ~ year+ season_col * (Natural_5_filled.s + Cropland_500.s + 
+                 Depth.s + sum_P.s + Strat + MeanT.s +Pond_dries_cat + post_Emerse_pond.s) 
+  +Forest_500.s + Aquatic_500.s + Urban_500.s +Animals_cont.s+(1 | PondCode)+(1 | Country), data = df_modelling, na.action = "na.fail")
+
+
+step_model <- step(TN_glmm)
+step_model
+
+test <- lmer(log_TN ~ season_col + Cropland_500.s + Depth.s + Strat + MeanT.s + Pond_dries_cat + post_Emerse_pond.s + Animals_cont.s + (1 | PondCode) + (1 | Country) + season_col:Depth.s + season_col:MeanT.s + season_col:Pond_dries_cat + season_col:post_Emerse_pond.s,data = df_modelling, na.action = "na.fail")
+
+tab_model(test,transform=NULL,show.intercept = TRUE)
+
+TN_glmm_step <- lmer(log_TN ~ season_col + 
+                       Cropland_500.s + Depth.s + sum_P.s + 
+                       Strat + MeanT.s + Pond_dries_cat + 
+                       post_Emerse_pond.s + (1 | PondCode) + 
+                       season_col:Depth.s + 
+                       season_col:MeanT.s + season_col:Pond_dries_cat +
+                       season_col:post_Emerse_pond.s,
+                   data = df_modelling, na.action = "na.fail")
+
+step(TN_glmm_step)
+tab_model(TN_glmm_step,file=paste0(data_dir,'TN_seasonility_model.doc'))
+
+BIC(TN_glmm)
+BIC(TN_glmm_step)
+
+BIC(TN_glmm_step_simplified)
+library("cv")
+summary(cv(TN_glmm_step,
+   k = 10,
+   seed = 5240))
+
+drop1(TN_glmm_step, test = "Chisq")
+# 
+# TN_glmm_step_simplified <- lmer(log_TN ~ season_col + 
+#                                   Cropland_500.s + Depth.s + sum_P.s +
+#                                  Strat + MeanT.s + Pond_dries + 
+#                                   post_Emerse_pond.s +
+#                                  season_col:MeanT.s + 
+#                                   season_col:Pond_dries + (1 | PondCode),
+#                                  data = df_modelling, REML = FALSE)
+# visreg(TN_glmm_step_simplified, gg = TRUE,partial=TRUE,scale='response')
+# 
+# AIC(TN_glmm_step, TN_glmm_step_simplified)
+# BIC(TN_glmm_step, TN_glmm_step_simplified)
+# 
+# tab_model(TN_glmm_step_simplified)
+# 
+# drop1(TN_glmm_step_simplified, test = "Chisq")
+# 
+# df_modelling$Strat <- as.factor(df_modelling$Strat)
+# TN_glmm_step_more_simplified <- lmer(log_TN ~ season_col + Cropland_500.s + Depth.s + 
+#                                      sum_P.s + Strat + MeanT.s + Pond_dries_cat + 
+#                                      season_col:MeanT.s + season_col:Pond_dries + 
+#                                      (1 | PondCode), 
+#                                      data = df_modelling, REML = FALSE)
+# 
+# tab_model(TN_glmm_step_more_simplified)
+# summary(cv(TN_glmm_step_more_simplified,
+#    k = 5,
+#    seed = 5240))
+
+#Pondscape and country
+
+TN_glmm_step_pondscape <- lmer(log_TN ~ season_col + Cropland_500.s + Depth.s + 
+                                     sum_P.s + Strat + MeanT.s + Pond_dries + 
+                                     season_col:MeanT.s + season_col:Pond_dries +  
+                                (1 | PondCode) , 
+                                     data = df_modelling, REML = FALSE)
+
+
+BIC(TN_glmm_step_more_simplified,TN_glmm_step_pondscape)
+anova(TN_glmm_step_pondscape,TN_glmm_step_more_simplified)
+
+tab_model(TN_glmm_step_pondscape)
+
+
+TN_glmm_hydro <- lmer(
+  formula = log_TN ~ year+ season_col * (Natural_5_filled.s + Cropland_500.s + 
+                 Depth.s + sum_P.s + Strat + MeanT.s+Pond_dries_cat+post_Emerse_pond.s) 
+  + Forest_500.s + Aquatic_500.s + Urban_500.s+ Animals_cont.s + 
+    (1 | PondCode),data = df_modelling, na.action = "na.fail"
+)
+step_model <- step(TN_glmm_hydro)
+step_model
+TN_glmm_hydro_step <- lmer(log_TN ~ season_col + Cropland_500.s + Depth.s + sum_P.s + Strat + MeanT.s + Pond_dries_cat + post_Emerse_pond.s + (1 | PondCode) + season_col:Depth.s + season_col:MeanT.s + season_col:Pond_dries_cat + season_col:post_Emerse_pond.s,data = df_modelling, na.action = "na.fail")
+
+tab_model(TN_glmm_hydro_step)
+
+
+```
