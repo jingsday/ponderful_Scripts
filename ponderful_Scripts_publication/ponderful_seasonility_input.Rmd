@@ -33,7 +33,7 @@ id <- id[,c("Pond_ID","PondCode","X","Y","Pondscape","Country","Strat_Survey","R
 id$PondCode <- toupper(id$PondCode)
 
 id = id[id$Strat_Survey==1,]
-Pond <- Pond[,c("PondCode","AssessmentDate","Nat_res","Area","Depth","Pond_dries","Rel_waterlev","PVI")]
+Pond <- Pond[,c("PondCode","AssessmentDate","Nat_res","Area","Depth","Pond_dries","Rel_waterlev","PVI","Area")]
 Pond$PondCode <- toupper(Pond$PondCode)
 
 Pond$AssessmentDate <- as.Date(Pond$AssessmentDate, format = "%d/%m/%Y")
@@ -46,6 +46,8 @@ Pond$year <-substr(Pond$AssessmentDate, 1,4)
 PC <- read.csv(paste0(data_dir,'ponderful_DATA_updated/D2.4_PhysicoChemistry_20240516.csv'))
 PC$PondCode <- toupper(PC$PondCode)
 
+
+
 PC[] <- lapply(PC, gsub, pattern='<', replacement='')
 PC$NOTES <- NULL
 PC$Notes..different.date.O2.spls.taken <- NULL
@@ -55,14 +57,14 @@ PC$MeasurementDate <- as.Date(PC$MeasurementDate, format = "%d/%m/%Y")
 PC$year <- format(PC$MeasurementDate, "%Y")
 
 # PC <- merge(PC,Pond[,c("PondCode","AssessmentDate","Pond_dries")],all.x = T,by.x = c('PondCode', 'MeasurementDate'),
-#              by.y=c('PondCode', 'AssessmentDate'))
+#,     by.y=c('PondCode', 'AssessmentDate'))
 
 PC[!is.na(PC$TN) & PC$TN >= 10,]$TN <- NA
 #PC[!is.na(PC$CHLa_Spectro) & PC$CHLa_Spectro >= 800,]$CHLa_Spectro <- NA
+PC <- merge(PC, id[,c('PondCode','Pond_ID')],by = 'PondCode',all.x=T)
 
 #PC table seasons
-PCs=PC[!is.na(PC$TN),c("PondCode","MeasurementDate","year","season_col","Sludge",
-                      "TN","TP" )]
+PCs=PC[!is.na(PC$TN),c("PondCode","Pond_ID","MeasurementDate","year","season_col","Sludge","TN","TP" )]
 
 PCunique <- PCs %>% 
   group_by(PondCode, year, season_col) %>%
@@ -95,12 +97,17 @@ LU5unique <- LU5 %>%  group_by(PondCode,year) %>%
 LC <- read.csv(paste0(data_dir,'ponderful_DATA_updated/LandCover_selectedradii.csv'), header=T, sep = ",")
 LC$PondCode <- toupper(LC$PondCode)
 
+
 ```
 
 
 ```{r model_df:TN, TP, Depth,Pond_dries,Sludge}
-model_df <- PCunique[,c("PondCode","year", "Country","season_col","Sludge","TN","TP")]
+model_df <- PCunique[,c("PondCode","Pond_ID","year", "Country","season_col","Sludge","TN","TP")]
 model_df <-merge(model_df,LU5unique,on=c('PondCode','year'),all.x=T)
+# model_df <-merge(model_df,LU5[,c("Unimp_grassland","Semimp_grassland", "Imp_grassland",  
+#                               "Arable","Urban", "Rock","Marsh",
+#                               "Streams","Other")],on=c('PondCode','year'),all.x=T)
+
 
 #model_df <- merge(model_df,Pond[,c('PondCode','year','Depth','Pond_dries')],on=c('PondCode','year'),all.x=T)
 
@@ -108,7 +115,7 @@ length(unique(model_df$PondCode))
 length(unique(model_df[is.na(model_df$Sludge),]$PondCode))
 model_df <- merge(model_df,LC[,c(4,6:10)],by="PondCode", all.x=T) 
 
-model_df <- merge(model_df,Pond[,c('PondCode', "year" ,'Depth','Pond_dries')],by=c('PondCode','year'),all.x=T)
+model_df <- merge(model_df,Pond[,c('PondCode', "year" ,'Area','Depth','Pond_dries')],by=c('PondCode','year'),all.x=T)
 ```
 
 ```{r vegetation; model_df:+post_Emerse_pond}
@@ -129,10 +136,9 @@ model_df <-merge(model_df,vegetation[,c('PondCode','year','post_Emerse_pond')],o
 data_dir <- '/Users/lidiayung/PhD_project/project_PONDERFUL/ponderful_OUTPUT/ponderful_seasonility/'
 
 climatic <- read.csv(paste0(data_dir,'season_temp_prec.csv'))
-climatic$PondCode <- toupper(climatic$PondCode)
 
-model_df <- merge(model_df, climatic[,c('PondCode',"year","season_col",'MeanT','sum_P')],
-      by = c('PondCode',"year","season_col"),all.x=T)
+model_df <- merge(model_df, climatic[,c('Pond_ID',"year","season_col",'MeanT','sum_P')],
+      by = c('Pond_ID',"year","season_col"),all.x=T)
 
 length(unique(intersect(model_df$PondCode,climatic$PondCode)))#240
 ```
@@ -155,12 +161,9 @@ hydro_strat_id <- hydro_strat_id %>%
   slice(1) %>%
   ungroup()
 
-#
-model_df <- merge(model_df,id[,c('Pond_ID','PondCode')],by='PondCode',all.x=T)
-
 
 model_df <- merge(model_df, hydro_strat_id[,c('Pond_ID','Season','Year','Strat')],
-                by.x= c('Pond_ID','season_col','year'),by.y = c('Pond_ID','Season','Year'),all.x=T)
+       by.x= c('Pond_ID','season_col','year'),by.y = c('Pond_ID','Season','Year'),all.x=T)
 length(unique(model_df$PondCode))
 setdiff(dom_landcover_nov$PondCode,model_df$PondCode)#
 

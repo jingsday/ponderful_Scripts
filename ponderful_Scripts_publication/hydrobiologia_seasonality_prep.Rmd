@@ -1,0 +1,85 @@
+---
+title: "hydro_prep"
+author: "Jing"
+date: "2025-04-08"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r Input, echo=FALSE}
+data_dir <- '/Users/lidiayung/PhD_project/project_PONDERFUL/ponderful_OUTPUT/ponderful_seasonility/'
+
+glmm_df <- read.csv(paste0(data_dir,'glmm_df_nat5_filled_strat_final.csv'))
+
+
+```
+
+
+```{r Prep, echo=FALSE}
+#Factors
+##Country as factors
+glmm_df$Country <- as.factor(glmm_df$Country)
+levels(glmm_df$Country)
+
+
+## Bio climatic regions
+glmm_df$Country <- as.character(glmm_df$Country)
+
+# Initialize altregion as a copy of Country
+glmm_df$altregion <- glmm_df$Country
+
+glmm_df[glmm_df$Country %in% c('Belgium', 'Denmark', 'UK'), "altregion"] <- 'Atlantic'
+glmm_df[glmm_df$Country %in% c('Switzerland','Germany'), "altregion"] <- 'Temperate'
+
+# Check the changes
+table(glmm_df$altregion)
+
+##Factors and transformation 
+glmm_df$altregion <- as.factor(glmm_df$altregion)
+levels(glmm_df$altregion)
+```
+
+
+```{r}
+
+hydro_strat <- read.csv(paste0(data_dir,'env_all_stratification.csv'))
+hydro_strat[hydro_strat$Season =='Fall',]$Season <-'Autumn'
+
+ref <- read.csv(paste0(data_dir,'PONDERFUL_PondID_gas_work.csv'))
+ref$PondCode <- toupper(ref$PondCode)
+
+hydro_strat_id <- merge(hydro_strat,ref[,c('PondCode','Pond_ID')],by='PondCode',all.x=T)
+
+table(is.na(hydro_strat_id$Pond_ID))#none
+
+# Step 1: Get only the first Strat value per Pond_ID, Year, and Season
+hydro_strat_summary <- hydro_strat_id %>%
+  group_by(Pond_ID, Year, Season) %>%
+  slice(1) %>%
+  ungroup() %>%
+  select(Pond_ID, Season, Strat)
+
+data_dir <- '/Users/lidiayung/PhD_project/project_PONDERFUL/ponderful_DATA/'
+
+dom_landcover_nov <- read.csv(paste0(data_dir,'/ponderful_DATA_updated/PhyChe_XY_landcover_nov.txt'))
+dom_landcover_nov$PondCode <- toupper(dom_landcover_nov$PondCode)
+
+glmm_season_tp_df<- merge(glmm_season_tp_df,dom_landcover_nov[,c('PondCode','Pond_ID')],
+                          by='PondCode',all.x = T)
+# Step 2: Join using correct column names (assuming Pond_ID == PondCode)
+glmm_season_tp_df <- glmm_season_tp_df %>%
+  left_join(hydro_strat_summary, by = c("Pond_ID" = "Pond_ID", "season_col" = "Season"))
+
+
+# Step 3: Decide what to do with mixed values (Strat_mean == 0.5)
+# You can inspect them like this:
+glmm_season_tp_df %>%
+  filter(!is.na(Strat_mean) & Strat_mean == 0.5)
+
+glmm_season_tp_df<- glmm_season_tp_df[,-c(14)]
+write.csv(glmm_season_tp_df,paste0(data_dir,'glmm_season_tp_df.csv'))
+
+```
