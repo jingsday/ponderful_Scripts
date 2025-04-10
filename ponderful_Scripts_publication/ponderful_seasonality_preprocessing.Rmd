@@ -60,6 +60,9 @@ cat("Ponds with changes in Pond_dries_cat across years/seasons:", nrow(pond_dry_
 pondries_var_df <- model_df[model_df$PondCode %in% pond_dry_var$PondCode,]
 pondries_var_df <- pondries_var_df[,c("PondCode","season_col","year","Pond_dries")]
 pondries_var_df
+
+model_df[model_df$PondCode ==  'MUN_105', 'Pond_dries'] = 2
+
 ```
 
 
@@ -86,6 +89,136 @@ model_df_nonna <- model_df %>%
   ungroup()
 ```
 
+
+```{r Mean before transformation}
+model_df_nonna$X <- as.factor(model_df_nonna$X)
+model_df_nonna$year <- as.factor(model_df_nonna$year)
+model_df_nonna$Strat <- as.numeric(model_df_nonna$Strat)
+
+#year
+season_mean_df <- model_df_nonna %>% 
+  group_by(PondCode,season_col,year) %>%
+  summarise(across(where(is.numeric), mean, na.rm = TRUE))
+
+table(is.na(season_mean_df$Sludge))
+# FALSE  TRUE 
+#   221   410 
+
+length(unique(season_mean_df$PondCode))# 240 
+```
+
+
+```{r}
+#Adding log_TN (and log_TP)
+season_mean_df$log_TN <- log(season_mean_df$TN,base=10)
+hist(season_mean_df$log_TN)
+shapiro.test(season_mean_df$log_TN)
+
+season_mean_df$log_TP <- log(season_mean_df$TP,base=10)
+hist(season_mean_df$log_TP)
+shapiro.test(season_mean_df$log_TP)
+```
+
+
+```{r bestNormalize}
+library(bestNormalize)
+
+#Area
+shapiro.test(season_mean_df$Area)
+Arean <- bestNormalize(season_mean_df$Area)
+plot(Arean, leg_loc = "bottomright")
+season_mean_df$Area.t <- asinh(season_mean_df$Area)
+hist(season_mean_df$Area.t)
+shapiro.test(season_mean_df$Area.t)
+
+#Depth
+shapiro.test(season_mean_df$Depth)
+Depthn <- bestNormalize(season_mean_df$Depth)
+plot(Depthn, leg_loc = "bottomright")
+season_mean_df$Depth.t <- predict(orderNorm(season_mean_df$Depth))
+hist(season_mean_df$Depth.t)
+shapiro.test(season_mean_df$Depth.t)
+
+#Animals_cont  skew
+shapiro.test(season_mean_df$Animals_cont)
+Animals_contn <- bestNormalize(season_mean_df$Animals_cont)
+plot(Animals_contn, leg_loc = "bottomright")
+season_mean_df$Animals_cont.t <- predict(orderNorm(season_mean_df$Animals_cont))
+hist(season_mean_df$Animals_cont.t)
+shapiro.test(season_mean_df$Animals_cont.t)
+
+#MeanT
+shapiro.test(season_mean_df$MeanT)
+MeanT <- bestNormalize(season_mean_df$MeanT)
+plot(MeanT, leg_loc = "bottomright")
+season_mean_df$MeanT.t <- predict(orderNorm(season_mean_df$MeanT))
+hist(season_mean_df$MeanT.t)
+shapiro.test(season_mean_df$MeanT.t)
+
+#sum_P
+shapiro.test(season_mean_df$sum_P)
+sum_P <- bestNormalize(season_mean_df$sum_P)
+plot(sum_P, leg_loc = "bottomright")
+season_mean_df$sum_P.t <- predict(orderNorm(season_mean_df$sum_P))
+hist(season_mean_df$sum_P.t)
+shapiro.test(season_mean_df$sum_P.t)
+
+
+#Sludge
+shapiro.test(season_mean_df$Sludge)
+Sludge <- bestNormalize(season_mean_df$Sludge)
+plot(Sludge, leg_loc = "bottomright")
+season_mean_df$Sludge.t <- predict(orderNorm(season_mean_df$Sludge))
+hist(season_mean_df$SludgeP.t)
+shapiro.test(season_mean_df$Sludge.t)
+
+```
+
+```{r Quantile transformation}
+transformar_columna <- function(x) {
+  perc <- rank(x, na.last = "keep") / (sum(!is.na(x)) + 1)  # Calcular los percentiles manteniendo los NA
+  result <- ifelse(!is.na(x), qnorm(perc), NA)  # Transformar los percentiles a la distribución normal, manteniendo los NA
+  return(result)}
+
+#Natural_5, Aquatic_500,Cropland_500,Forest_500,Pastures.and.open.nature_500,Urban_500
+season_mean_df$natural_5_filled.t<-transformar_columna(season_mean_df$natural_5_filled)
+season_mean_df$Aquatic_500.t<-transformar_columna(season_mean_df$Aquatic_500)
+season_mean_df$Cropland_500.t<-transformar_columna(season_mean_df$Cropland_500)
+season_mean_df$Pastures.and.open.nature_500.t<-transformar_columna(season_mean_df$Pastures.and.open.nature_500)
+season_mean_df$Urban_500.t<-transformar_columna(season_mean_df$Urban_500)
+season_mean_df$Forest_500.t<-transformar_columna(season_mean_df$Forest_500)
+season_mean_df$post_Emerse_pond.t<-transformar_columna(season_mean_df$post_Emerse_pond)
+```
+
+```{r Scale}
+season_mean_df[,c(,'Animals_cont.s','Area.s','Depth.s',"Aquatic_500.s",  
+            "Cropland_500.s","Forest_500.s","Pastures.and.open.nature_500.s" ,
+            "Urban_500.s", "natural_5_filled.s","MeanT.s","sum_P.s", "post_Emerse_pond.s")] <-scale(season_mean_df[,c(
+                    'Animals_cont.t','Area.t','Depth.t',"Aquatic_500.t",  
+                    "Cropland_500.t","Forest_500.t","Pastures.and.open.nature_500.t" ,
+                    "Urban_500.t", "natural_5_filled.t","MeanT.t","sum_P.t","post_Emerse_pond.t")], center = TRUE, scale = TRUE)
+
+season_mean_df <- merge(season_mean_df,dom_landcover_nov[,c('PondCode','Pondscape')],by='PondCode',all.x=T)
+#write.csv(season_mean_df,paste0(data_dir,'FINAL_ponderful_hydro_seasonality_glmm.csv'))
+```
+
+
+#############UNTIL HERE
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ```{r}
 #LU variables
 data_dir <- '/Users/lidiayung/PhD_project/project_PONDERFUL/ponderful_DATA/'
@@ -100,144 +233,15 @@ LU5$PondCode <- toupper(LU5$PondCode)
 LU5$AssessmentDate <- as.Date(LU5$AssessmentDate, format = "%d/%m/%Y")
 LU5$year <- format(LU5$AssessmentDate, "%Y")
 
-
-model_df_nonna <- merge(model_df_nonna, LU5[,c("Unimp_grassland", "Semimp_grassland",
-                                   "Imp_grassland","Arable","Urban" ,
-                                   "Rock","Marsh", "Streams")],
-      on=c('PondCode','year'))
-```
-
-
-```{r Mean before transformation}
-model_df_nonna$X <- as.factor(model_df_nonna$X)
-model_df_nonna$year <- as.factor(model_df_nonna$year)
-model_df_nonna$Strat <- as.factor(model_df_nonna$Strat)
-
-season_mean_df <- model_df_nonna %>% 
-  group_by(PondCode,season_col) %>%
-  summarise(across(where(is.numeric), mean, na.rm = TRUE))
-
-table(is.na(season_mean_df$Sludge))
-# FALSE  TRUE 
-#   221   410 
-
-length(unique(season_mean_df$PondCode))# 240 
-
-
-season_mean_df_strat <- merge(season_mean_df, model_df_nonna[,c('PondCode','Season','Strat')])
-```
-
-
-```{r populate pondries and natural 5 and other variables}
-#populate pond_dries
-#
-season_mean_df[season_mean_df$PondCode ==  'MUN_105', 'Pond_dries'] = 2
-
-season_mean_df[season_mean_df$PondCode ==  'MUN_105', 'Pond_dries']
-
-# View result
-print(season_mean_df_nonna)
-
-
-glmm_df_depth_nonna[is.na(glmm_df_depth_nonna$natural_5_filled.s),]
-#missing SCL1 in both years 
-#populate other variables
-
-
-
-
+# 
+# model_df_nonna <- merge(model_df_nonna, LU5[,c("Unimp_grassland", "Semimp_grassland",
+#                                    "Imp_grassland","Arable","Urban" ,
+#                                    "Rock","Marsh", "Streams")],
+#       on=c('PondCode','year'))
 ```
 
 
 
-```{r}
-#Adding log_TN (and log_TP)
-model_df$log_TN <- log(model_df$TN,base=10)
-hist(model_df$log_TN)
-shapiro.test(model_df$log_TN)
-
-model_df$log_TP <- log(model_df$TP,base=10)
-hist(model_df$log_TP)
-shapiro.test(model_df$log_TP)
-```
-
-
-```{r bestNormalize}
-library(bestNormalize)
-
-#Area
-shapiro.test(model_df$Area)
-Arean <- bestNormalize(model_df$Area)
-plot(Arean, leg_loc = "bottomright")
-model_df$Area.t <- asinh(model_df$Area)
-hist(model_df$Area.t)
-shapiro.test(model_df$Area.t)
-
-#Depth
-shapiro.test(model_df$Depth)
-Depthn <- bestNormalize(model_df$Depth)
-plot(Depthn, leg_loc = "bottomright")
-model_df$Depth.t <- predict(orderNorm(model_df$Depth))
-hist(model_df$Depth.t)
-shapiro.test(model_df$Depth.t)
-
-#Animals_cont  skew
-shapiro.test(model_df$Animals_cont)
-Animals_contn <- bestNormalize(model_df$Animals_cont)
-plot(Animals_contn, leg_loc = "bottomright")
-model_df$Animals_cont.t <- predict(orderNorm(model_df$Animals_cont))
-hist(model_df$Animals_cont.t)
-shapiro.test(model_df$Animals_cont.t)
-
-#MeanT
-shapiro.test(model_df$MeanT)
-MeanT <- bestNormalize(model_df$MeanT)
-plot(MeanT, leg_loc = "bottomright")
-model_df$MeanT.t <- predict(orderNorm(model_df$MeanT))
-hist(model_df$MeanT.t)
-shapiro.test(model_df$MeanT.t)
-
-#sum_P
-shapiro.test(model_df$sum_P)
-sum_P <- bestNormalize(model_df$sum_P)
-plot(sum_P, leg_loc = "bottomright")
-model_df$sum_P.t <- predict(orderNorm(model_df$sum_P))
-hist(model_df$sum_P.t)
-shapiro.test(model_df$sum_P.t)
-
-```
-
-```{r Quantile transformation}
-transformar_columna <- function(x) {
-  perc <- rank(x, na.last = "keep") / (sum(!is.na(x)) + 1)  # Calcular los percentiles manteniendo los NA
-  result <- ifelse(!is.na(x), qnorm(perc), NA)  # Transformar los percentiles a la distribución normal, manteniendo los NA
-  return(result)}
-
-#Natural_5, Aquatic_500,Cropland_500,Forest_500,Pastures.and.open.nature_500,Urban_500
-model_df$Natural_5.t<-transformar_columna(model_df$Natural_5)
-model_df$Aquatic_500.t<-transformar_columna(model_df$Aquatic_500)
-model_df$Cropland_500.t<-transformar_columna(model_df$Cropland_500)
-model_df$Pastures.and.open.nature_500.t<-transformar_columna(model_df$Pastures.and.open.nature_500)
-model_df$Urban_500.t<-transformar_columna(model_df$Urban_500)
-model_df$Forest_500.t<-transformar_columna(model_df$Forest_500)
-model_df$post_Emerse_pond.t<-transformar_columna(model_df$post_Emerse_pond)
-```
-
-```{r Scale}
-model_df[,c('Animals_cont.s','Depth.s',"Aquatic_500.s",  
-            "Cropland_500.s","Forest_500.s","Pastures.and.open.nature_500.s" ,
-            "Urban_500.s", "Natural_5.s","MeanT.s","sum_P.s", "post_Emerse_pond.s")] <-scale(model_df[,c(
-                    'Animals_cont.t','Depth.t',"Aquatic_500.t",  
-                    "Cropland_500.t","Forest_500.t","Pastures.and.open.nature_500.t" ,
-                    "Urban_500.t", "Natural_5.t","MeanT.t","sum_P.t","post_Emerse_pond.t")], center = TRUE, scale = TRUE)
-
-glmm_df <- model_df[,c("Pond_ID" ,"PondCode","season_col"  ,"year","Country",
-                             "Strat","Pond_dries","log_TN","log_TP",'Animals_cont.s','Depth.s',"Aquatic_500.s",
-                             "Cropland_500.s","Forest_500.s","Pastures.and.open.nature_500.s" ,
-                             "Urban_500.s", "Natural_5.s","MeanT.s","sum_P.s","post_Emerse_pond.s")]
-
-write.csv(model_df,paste0(data_dir,'ponderful_hydro_seasonality_glmm.csv'))
-```
 
 ```{r Depth missing values}
 length(unique(glmm_df$PondCode)) #240

@@ -143,15 +143,16 @@ model_df_sludge$post_Emerse_pond.t<-transformar_columna(model_df_sludge$post_Eme
 ```{r Scale}
 model_df_sludge[,c('Animals_cont.s','Depth.s',"Aquatic_500.s",  
             "Cropland_500.s","Forest_500.s","Pastures.and.open.nature_500.s" ,
-            "Urban_500.s", "atural_5_filled.s","MeanT.s","sum_P.s", "post_Emerse_pond.s","Sludge.s")] <-scale(model_df_sludge[,c(
+            "Urban_500.s", "Natural_5_filled.s","MeanT.s","sum_P.s", "post_Emerse_pond.s","Sludge.s")] <-scale(model_df_sludge[,c(
                     'Animals_cont.t','Depth.t',"Aquatic_500.t",  
                     "Cropland_500.t","Forest_500.t","Pastures.and.open.nature_500.t" ,
                     "Urban_500.t", "natural_5_filled.t","MeanT.t","sum_P.t","post_Emerse_pond.t","Sludge.t")], center = TRUE, scale = TRUE)
 
 
 
-model_df_sludge_nonna <- model_df_sludge[,c("Pond_ID" ,"PondCode","season_col"  ,"year","Country",
-                             "Strat","Pond_dries","log_TN","log_TP",'Sludge.s','Animals_cont.s','Depth.s',"Aquatic_500.s",
+model_df_sludge_nonna <- model_df_sludge[,c("Pond_ID" ,"PondCode","season_col","year","Country",
+                             "Strat","Pond_dries","log_TN","log_TP",'Sludge.s','Animals_cont.s','Depth.s',
+                             "Aquatic_500.s",
                              "Cropland_500.s","Forest_500.s","Pastures.and.open.nature_500.s" ,
                              "Urban_500.s", "Natural_5_filled.s","MeanT.s","sum_P.s","post_Emerse_pond.s")]
 
@@ -191,32 +192,44 @@ model_df_sludge_nonna[model_df_sludge_nonna$Pond_dries == '1','Pond_dries_cat'] 
 model_df_sludge_nonna[model_df_sludge_nonna$Pond_dries == '2','Pond_dries_cat'] = 'Temporary'
 
 model_df_sludge_nonna$year <- as.factor(model_df_sludge_nonna$year)
+```
+```{r}
+
+dom_landcover_nov <- read.csv('~/PhD_project/project_PONDERFUL/ponderful_DATA/ponderful_DATA_updated/PhyChe_XY_landcover_nov.txt')
+
+dom_landcover_nov$PondCode <- toupper(dom_landcover_nov$PondCode)
+
+model_df_sludge_nonna <- merge(model_df_sludge_nonna,dom_landcover_nov[,c('PondCode','Pondscape')],
+                               by='PondCode',all.x=T)
+
+```
 
 
+```{r}
 sludge_tn_glmm <- lmer(
-  formula = log_TN ~ year+ season_col * (Natural_5_filled.s + Cropland_500.s + 
-                 Depth.s + sum_P.s + Strat + MeanT.s +Pond_dries_cat +
-                   post_Emerse_pond.s+Sludge.s) 
-  +Forest_500.s + Aquatic_500.s + Urban_500.s +Animals_cont.s+(1 | PondCode), data = model_df_sludge_nonna, na.action = "na.fail")
+  formula = log_TN ~ season_col * Sludge.s+(1 | PondCode), data = model_df_sludge_nonna, na.action = "na.fail")
 
 step(sludge_tn_glmm)
-```
 
+sludge_tp_glmm <- lmer(
+  formula = log_TP ~ year+ season_col * Sludge.s+(1 | PondCode)+ (1 | Country:Pondscape)+ (1 | Country), data = model_df_sludge_nonna, na.action = "na.fail")
 
-```{r GLMM TN}
-sludge_test <- lmer(log_TN~ season_col+Sludge.s+ (1|PondCode),data = model_df_sludge_nonna, na.action = "na.fail" )
-
-tab_model(sludge_test,file=paste0(data_dir,'TN_glmm_sludge_without.doc'))
-step(sludge_test)
+step(sludge_tp_glmm)
 
 ```
 
 
-```{r GLMM TP}
-sludge_test <- lmer(log_TP~ season_col*(Sludge.s) + (1|PondCode),data = model_df_sludge_nonna, na.action = "na.fail" )
 
-tab_model(sludge_test,file=paste0(data_dir,'TP_glmm_sludge_interactions.doc'))
-step(sludge_test)
+```{r}
+sludge_tp_glmm <- lmer(
+  formula = log_TP ~ season_col * Sludge.s+(1 | PondCode), data = model_df_sludge_nonna, na.action = "na.fail")
+
+step(sludge_tp_glmm)
+
+sludge_tp_glmm <- lmer(
+  formula = log_TP ~ year+ season_col * Sludge.s+(1 | PondCode)+ (1 | Country:Pondscape)+ (1 | Country), data = model_df_sludge_nonna, na.action = "na.fail")
+
+step(sludge_tp_glmm)
 
 ```
 

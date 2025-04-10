@@ -7,26 +7,232 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-data_dir <- '/Users/lidiayung/PhD_project/project_PONDERFUL/ponderful_OUTPUT/ponderful_seasonility/'
-
-glmm_df_depth_natural_nonna <- read.csv(paste0(data_dir,'glmm_strata_natural_5_filleds.csv'))
+library(dplyr)
+glmm_df_depth_natural_nonna <-read.csv('/Users/lidiayung/Downloads/model_df_nat5_filled_strat_final.csv')
 
 
 #factors
 glmm_df_depth_natural_nonna$year <- as.factor(glmm_df_depth_natural_nonna$year)
-df_modelling$Strat <- as.factor(df_modelling$Strat)
+glmm_df_depth_natural_nonna$PondCode <- toupper(glmm_df_depth_natural_nonna$PondCode)
+
+glmm_seasonality_df <- glmm_df_depth_natural_nonna %>%
+  group_by(Pond_ID,PondCode,year,season_col) %>%
+  summarise(across(where(is.numeric), ~mean(.x, na.rm=T))) %>%
+  ungroup()
+
+#822 rows 
+glmm_seasonality_tp_df <- glmm_seasonality_df[!is.na(glmm_seasonality_df$natural_5_filled),]
+```
+
+```{r}
+glmm_seasonality_tp_df[is.na(glmm_seasonality_tp_df$post_Emerse_pond),]
+
+#Fill in Depth,Area, Pond_dries, 
+#populate Area and Depth using value from the same year
+
+#area
+area_reference <- glmm_seasonality_tp_df %>%
+  filter(!is.na(Area)) %>%
+  group_by(PondCode) %>%
+  summarise(
+    unique_areas = list(unique(Area)),
+    n = n_distinct(Area),
+    .groups = "drop"
+  )
+
+# Step 2: Keep only those with exactly one unique Area value
+area_single_value <- area_reference %>%
+  filter(n == 1) %>%
+  mutate(Area_to_fill = sapply(unique_areas, function(x) x[1])) %>%
+  select(PondCode, Area_to_fill)
+
+# Step 3: Left join to the original df and fill missing Area
+glmm_seasonality_tp_df <- glmm_seasonality_tp_df %>%
+  left_join(area_single_value, by = "PondCode") %>%
+  mutate(Area = ifelse(is.na(Area), Area_to_fill, Area)) %>%
+  select(-Area_to_fill)
+
+#depth
+Depth_reference <- glmm_seasonality_tp_df %>%
+  filter(!is.na(Depth)) %>%
+  group_by(PondCode) %>%
+  summarise(
+    unique_dries = list(unique(Depth)),
+    n = n_distinct(Depth),
+    .groups = "drop"
+  )
+
+Depth_single_value <- Depth_reference %>%
+  filter(n == 1) %>%
+  mutate(Depth_to_fill = sapply(unique_dries, function(x) x[1])) %>%
+  select(PondCode, Depth_to_fill)
+
+glmm_seasonality_tp_df <- glmm_seasonality_tp_df %>%
+  left_join(Depth_single_value, by = "PondCode") %>%
+  mutate(Depth = ifelse(is.na(Depth), Depth_to_fill, Depth)) %>%
+  select(-Depth_to_fill)
+
+# Pond_dries
+Pond_dries_reference <- glmm_seasonality_tp_df %>%
+  filter(!is.na(Pond_dries)) %>%
+  group_by(PondCode) %>%
+  summarise(
+    unique_dries = list(unique(Pond_dries)),
+    n = n_distinct(Pond_dries),
+    .groups = "drop"
+  )
+
+Pond_dries_single_value <- Pond_dries_reference %>%
+  filter(n == 1) %>%
+  mutate(Pond_dries_to_fill = sapply(unique_dries, function(x) x[1])) %>%
+  select(PondCode, Pond_dries_to_fill)
+
+glmm_seasonality_tp_df <- glmm_seasonality_tp_df %>%
+  left_join(Pond_dries_single_value, by = "PondCode") %>%
+  mutate(Pond_dries = ifelse(is.na(Pond_dries), Pond_dries_to_fill, Pond_dries)) %>%
+  select(-Pond_dries_to_fill)
+
+# post_Emerse_pond
+post_emerse_reference <- glmm_seasonality_tp_df %>%
+  filter(!is.na(post_Emerse_pond)) %>%
+  group_by(PondCode) %>%
+  summarise(
+    unique_post = list(unique(post_Emerse_pond)),
+    n = n_distinct(post_Emerse_pond),
+    .groups = "drop"
+  )
+
+post_emerse_single_value <- post_emerse_reference %>%
+  filter(n == 1) %>%
+  mutate(post_to_fill = sapply(unique_post, function(x) x[1])) %>%
+  select(PondCode, post_to_fill)
+
+glmm_seasonality_tp_df <- glmm_seasonality_tp_df %>%
+  left_join(post_emerse_single_value, by = "PondCode") %>%
+  mutate(post_Emerse_pond = ifelse(is.na(post_Emerse_pond), post_to_fill, post_Emerse_pond)) %>%
+  select(-post_to_fill)
+
+#Strat 
+glmm_seasonality_tp_df[is.na(glmm_seasonality_tp_df$Strat),]#36 rows 
+```
+
+```{r log TN and TP}
+glmm_seasonality_tp_df$log_TN <- log(glmm_seasonality_tp_df$TN,base=10)
+hist(glmm_seasonality_tp_df$log_TN)
+shapiro.test(glmm_seasonality_tp_df$log_TN)
+
+glmm_seasonality_tp_df$log_TP <- log(glmm_seasonality_tp_df$TP,base=10)
+hist(glmm_seasonality_tp_df$log_TP)
+shapiro.test(glmm_seasonality_tp_df$log_TP)
+```
+
+```{r}
+library(bestNormalize)
+
+#Area
+shapiro.test(glmm_seasonality_tp_df$Area)
+Arean <- bestNormalize(glmm_seasonality_tp_df$Area)
+plot(Arean, leg_loc = "bottomright")
+glmm_seasonality_tp_df$Area.t <- asinh(glmm_seasonality_tp_df$Area)
+hist(glmm_seasonality_tp_df$Area.t)
+shapiro.test(glmm_seasonality_tp_df$Area.t)
+
+#Depth
+shapiro.test(glmm_seasonality_tp_df$Depth)
+Depthn <- bestNormalize(glmm_seasonality_tp_df$Depth)
+plot(Depthn, leg_loc = "bottomright")
+glmm_seasonality_tp_df$Depth.t <- predict(orderNorm(glmm_seasonality_tp_df$Depth))
+hist(glmm_seasonality_tp_df$Depth.t)
+shapiro.test(glmm_seasonality_tp_df$Depth.t)
+
+#Animals_cont  skew
+shapiro.test(glmm_seasonality_tp_df$Animals_cont)
+Animals_contn <- bestNormalize(glmm_seasonality_tp_df$Animals_cont)
+plot(Animals_contn, leg_loc = "bottomright")
+glmm_seasonality_tp_df$Animals_cont.t <- predict(orderNorm(glmm_seasonality_tp_df$Animals_cont))
+hist(glmm_seasonality_tp_df$Animals_cont.t)
+shapiro.test(glmm_seasonality_tp_df$Animals_cont.t)
+
+#MeanT
+shapiro.test(glmm_seasonality_tp_df$MeanT)
+MeanT <- bestNormalize(glmm_seasonality_tp_df$MeanT)
+plot(MeanT, leg_loc = "bottomright")
+glmm_seasonality_tp_df$MeanT.t <- predict(orderNorm(glmm_seasonality_tp_df$MeanT))
+hist(glmm_seasonality_tp_df$MeanT.t)
+shapiro.test(glmm_seasonality_tp_df$MeanT.t)
+
+#sum_P
+shapiro.test(glmm_seasonality_tp_df$sum_P)
+sum_P <- bestNormalize(glmm_seasonality_tp_df$sum_P)
+plot(sum_P, leg_loc = "bottomright")
+glmm_seasonality_tp_df$sum_P.t <- predict(orderNorm(glmm_seasonality_tp_df$sum_P))
+hist(glmm_seasonality_tp_df$sum_P.t)
+shapiro.test(glmm_seasonality_tp_df$sum_P.t)
+
+```
+
+```{r Quantile transformation}
+transformar_columna <- function(x) {
+  perc <- rank(x, na.last = "keep") / (sum(!is.na(x)) + 1)  # Calcular los percentiles manteniendo los NA
+  result <- ifelse(!is.na(x), qnorm(perc), NA)  # Transformar los percentiles a la distribución normal, manteniendo los NA
+  return(result)}
+
+#Natural_5, Aquatic_500,Cropland_500,Forest_500,Pastures.and.open.nature_500,Urban_500
+glmm_seasonality_tp_df$natural_5_filled.t<-transformar_columna(glmm_seasonality_tp_df$natural_5_filled)
+glmm_seasonality_tp_df$Aquatic_500.t<-transformar_columna(glmm_seasonality_tp_df$Aquatic_500)
+glmm_seasonality_tp_df$Cropland_500.t<-transformar_columna(glmm_seasonality_tp_df$Cropland_500)
+glmm_seasonality_tp_df$Pastures.and.open.nature_500.t<-transformar_columna(glmm_seasonality_tp_df$Pastures.and.open.nature_500)
+glmm_seasonality_tp_df$Urban_500.t<-transformar_columna(glmm_seasonality_tp_df$Urban_500)
+glmm_seasonality_tp_df$Forest_500.t<-transformar_columna(glmm_seasonality_tp_df$Forest_500)
+glmm_seasonality_tp_df$post_Emerse_pond.t<-transformar_columna(glmm_seasonality_tp_df$post_Emerse_pond)
+
+
+```
+
+
+```{r Scale}
+glmm_seasonality_tp_df[,c('Animals_cont.s','Depth.s','Area.s',"Aquatic_500.s",  
+            "Cropland_500.s","Forest_500.s","Pastures.and.open.nature_500.s" ,
+            "Urban_500.s", "natural_5_filled.s","MeanT.s","sum_P.s", "post_Emerse_pond.s")] <-scale(glmm_seasonality_tp_df[,c(
+                    'Animals_cont.t','Depth.t','Area.t',"Aquatic_500.t",  
+                    "Cropland_500.t","Forest_500.t","Pastures.and.open.nature_500.t" ,
+                    "Urban_500.t", "natural_5_filled.t","MeanT.t","sum_P.t","post_Emerse_pond.t")], center = TRUE, scale = TRUE)
+
+
+data_dir <- '/Users/lidiayung/PhD_project/project_PONDERFUL/ponderful_DATA/'
+id <-  read.csv(paste0(data_dir,'ponderful_DATA_updated/D2.4_PondID_20240124.csv'))
+
+glmm_seasonality_tp_df <- merge(glmm_seasonality_tp_df,
+                                id[,c('Country','Pondscape','Pond_ID')],
+                                by='Pond_ID',all.x=T)
+# glmm_seasonality_tp_df[!is.na(glmm_seasonality_tp_df$TP),]$TP 
+out_dir <- '/Users/lidiayung/PhD_project/project_PONDERFUL/ponderful_OUTPUT/ponderful_seasonility'
+write.csv(glmm_seasonality_tp_df, paste0(out_dir,'hydro_seasonality_glmm_df_april9.csv'))
+
+View(glmm_seasonality_tp_df)
 ```
 
 
 ```{r}
 library(corrplot)
-glmm_df_depth_natural_nonna[is.na(glmm_df_depth_natural_nonna$post_Emerse_pond.s),]
 
-df_modelling <- glmm_df_depth_natural_nonna[,c("Pond_dries",
+View(glmm_seasonality_tp_df,)
+glmm_df <- glmm_seasonality_tp_df[,c("Pond_ID" ,"PondCode","season_col"  ,"year","Country",
+                             "Strat","Pond_dries","log_TN","log_TP",'Animals_cont.s','Depth.s',"Aquatic_500.s",
+                             "Cropland_500.s","Forest_500.s","Pastures.and.open.nature_500.s" ,
+                             "Urban_500.s", "Natural_5.s","MeanT.s","sum_P.s","post_Emerse_pond.s")]
+
+
+
+
+
+
+df_modelling <- glmm_seasonality_tp_df[,c("Pond_dries",
                                                "Pond_dries_cat","PondCode","Country","Pondscape","season_col","year","log_TN","log_TP",
                                                'Animals_cont.s', 'Depth.s',"Aquatic_500.s",
                                                "Cropland_500.s","Forest_500.s","Pastures.and.open.nature_500.s" ,
                                                "Urban_500.s", "natural_5_filled.s","MeanT.s","sum_P.s","post_Emerse_pond.s","Strat")]
+df_modelling$Strat <- as.factor(df_modelling$Strat)
 
 colSums(is.na(df_modelling))
 
@@ -51,8 +257,6 @@ library(lmerTest)
 library(sjPlot)
 
 ###theme_bw() !!!!!!!!!!!!!
-
-
 df_modelling <- na.omit(df_modelling)
 TN_glmm <- lmer(
   formula = log_TN ~ year+ season_col * (natural_5_filled.s + Cropland_500.s + 
