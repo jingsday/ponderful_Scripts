@@ -211,6 +211,13 @@ sludge_tn_glmm <- lmer(
 
 step(sludge_tn_glmm)
 
+
+sludge_tn_glmm <- lmer(
+  formula = log_TN ~ year+ season_col * Sludge.s+(1 | PondCode)+ (1 | Country:Pondscape)+ (1 | Country), data = model_df_sludge_nonna, na.action = "na.fail")
+
+step(sludge_tn_glmm)
+tab_model(sludge_tn_glmm,transform=NULL,show.intercept = TRUE)
+
 sludge_tp_glmm <- lmer(
   formula = log_TP ~ year+ season_col * Sludge.s+(1 | PondCode)+ (1 | Country:Pondscape)+ (1 | Country), data = model_df_sludge_nonna, na.action = "na.fail")
 
@@ -223,7 +230,7 @@ step(sludge_tp_glmm)
 ```{r}
 sludge_tp_glmm <- lmer(
   formula = log_TP ~ season_col * Sludge.s+(1 | PondCode), data = model_df_sludge_nonna, na.action = "na.fail")
-
+tab_model(sludge_tp_glmm,transform=NULL,show.intercept = TRUE)
 step(sludge_tp_glmm)
 
 sludge_tp_glmm <- lmer(
