@@ -206,6 +206,7 @@ model_df_sludge_nonna <- merge(model_df_sludge_nonna,dom_landcover_nov[,c('PondC
 
 
 ```{r}
+
 sludge_tn_glmm <- lmer(
   formula = log_TN ~ season_col * Sludge.s+(1 | PondCode), data = model_df_sludge_nonna, na.action = "na.fail")
 
