@@ -71,10 +71,39 @@ TN_glmm_step_depth <- lmer(
 
 tab_model(TN_glmm_step_depth,transform=NULL,show.intercept = TRUE)
 
+
+TN_glmm_step_depth_try <- lmer(
+  formula = log_TN ~ season_col + Cropland_500.s + Pond_dries_cat + Depth.s + sum_P.s 
+  + Strat + Animals_cont.s +season_col*(post_Emerse_pond.s+Strat) +(1 | PondCode) + (1 | Country:Pondscape) + (1 | Country) 
+  + season_col:Pond_dries_cat, data=df_modelling, na.action = "na.fail")
+step(TN_glmm_step_depth_try)
+
+TN_glmm_step_depth_step<- lmer(
+  formula = log_TN ~ season_col + Cropland_500.s + Pond_dries_cat + Depth.s + sum_P.s + Strat + Animals_cont.s + post_Emerse_pond.s + (1 | PondCode) + (1 | Country:Pondscape) + (1 | Country) + season_col:post_Emerse_pond.s + season_col:Pond_dries_cat, data=df_modelling, na.action = "na.fail") 
+
+tab_model(TN_glmm_step_depth_step,transform=NULL,show.intercept = TRUE)
+
+
+step(TN_glmm_step_depth_try)
+
 TP_glmm_step_area <- lmer(log_TP ~ season_col + Cropland_500.s + Area.s + Depth.s +
                             Animals_cont.s + (1 | PondCode) + (1 | Country:Pondscape) +
                             (1 | Country) + season_col:Area.s, data = df_modelling, na.action = "na.fail")
 tab_model(TP_glmm_step_area,transform=NULL,show.intercept = TRUE)
+
+
+TP_glmm_step_area_try <-lmer(log_TP ~ season_col + Cropland_500.s + Area.s + Depth.s +
+                            Animals_cont.s + season_col*(post_Emerse_pond.s+Strat) +(1 | PondCode) +
+                              (1 | Country:Pondscape) + (1 | Country) + season_col:Area.s, data = df_modelling,
+                            na.action = "na.fail")
+step(TP_glmm_step_area_try)
+
+
+TP_glmm_step_area_try_step<- lmer(
+  formula = log_TP ~ season_col + Cropland_500.s + Area.s + Depth.s + Animals_cont.s + (1 | PondCode) + (1 | Country:Pondscape) + (1 | Country) + season_col:Area.s, data=df_modelling, na.action = "na.fail") 
+
+tab_model(TP_glmm_step_area_try_step,transform=NULL,show.intercept = TRUE)
+
 
 ```
 
