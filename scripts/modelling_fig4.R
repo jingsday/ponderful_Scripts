@@ -10,8 +10,10 @@ library(ggplot2)
 library(visreg)
 library(patchwork)
 library(dplyr)
+library(lmerTest)
+library(sjPlot)
 
-model_df <- read.csv('FINAL_ponderful_hydro_seasonality_glmm_input.csv')
+model_df <- read.csv('/Users/lidiayung/PhD_project/project_PONDERFUL/ponderful_OUTPUT/ponderful_seasonility/FINAL_ponderful_hydro_seasonality_glmm_input.csv')
 model_df <- model_df[!is.na(model_df$Area),]
 model_df <- model_df[!is.na(model_df$TP),] #721 
 
@@ -253,6 +255,12 @@ full_combined_plot <- full_combined_plot +
 
 full_combined_plot
 
-output_path <- "~/Desktop/hydro_glmm_seasonality_legends.pdf"
+output_path <- "~/Desktop/hydro_glmm_seasonality_legends1.pdf"
 ggsave(output_path, plot = full_combined_plot, width = 35, height = 33, dpi = 600)
+output_path <- "~/Desktop/hydro_glmm_seasonality_legends1.png"
 
+ggsave(output_path,
+       plot = full_combined_plot,
+       width = 35,
+       height = 33,
+       dpi = 600)
