@@ -101,7 +101,7 @@ hist_TP <- ggplot(dom_landcover_nov, aes(x = TP)) +
   geom_histogram(binwidth = 0.1,  color = "black", alpha = 0.7) + 
   labs(
     title = "Distribution of Response Variable TP (n = 240)",
-    x = "Total Phosporus (TP,  mg/L)",
+    x = "Total Phosphorus (TP,  mg/L)",
     y = "Frequency")+
   theme_minimal(base_size = 15) + 
   theme(
@@ -116,7 +116,7 @@ hist_TP <- ggplot(dom_landcover_nov, aes(x = TP)) +
 combined_plot <- wrap_plots(hist_TN,hist_TP)
 
 
-output_path <- paste0(outwdir, "distribution.png")
+output_path <- paste0(outwdir, "SM1_distribution.png")
 ggsave(output_path, plot = combined_plot, width = 12, height = 8,dpi = 600)
 
 ```
